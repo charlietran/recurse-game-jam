@@ -1,11 +1,19 @@
 pico-8 cartridge // http://www.pico-8.com
 version 16
 __lua__
+
+--grid width
+gridw=10
+--grid height
+gridh=20
+--blocksize
+bsz=6
+
 function _init()
   grid={}
-  for i=1,20 do
+  for i=1,gridh do
     grid[i]={}
-    for j=1,10 do
+    for j=1,gridw do
       grid[i][j]=1
     end
   end
@@ -67,7 +75,7 @@ function _draw()
   for y,row in pairs(grid) do
     for x,cell in pairs(row) do
       if cell then
-        sspr(8+cell*6, 0, 6, 6, x*6, y*6)
+        sspr(8+cell*bsz, 0, bsz, bsz, x*bsz, y*bsz)
       end
     end
   end
@@ -79,7 +87,7 @@ function _draw()
   for row_num,row in pairs(shape_to_draw) do
     for col_num,value in pairs(row) do
       if value==1 then
-        sspr(8, 0, 6, 6, (col_num-1)*6+active.x*6, (row_num-1)*6+active.y*6)
+        sspr(8, 0, bsz, bsz, (col_num-1)*bsz+active.x*bsz, (row_num-1)*bsz+active.y*bsz)
       end
     end
   end
