@@ -9,26 +9,20 @@ gridh=20
 --blocksize
 bsz=6
 
+
 function _init()
   grid={}
   for i=1,gridh do
     grid[i]={}
     for j=1,gridw do
-      grid[i][j]=1
+      grid[i][j]=0
     end
   end
 
-  active={
-    tetro=tetros[1],
-    index=1,
-    x=4,
-    y=1,
-    rotation=1
-  }
+  add_tetro()
 
-  active.current_shape=function(self)
-    return self.tetro.shapes[self.rotation]
-  end
+  score=0
+  game_over=false
 
 end
 
@@ -44,15 +38,12 @@ function collide(shape, newx, newy)
           local abs_y = newy+local_y-1
 
           if (abs_x > gridw) or (abs_x < 1) then
-            printh("out of bounds")
-            printh("newx: "..newx)
-            printh("local_x: "..local_x)
             return true
           end
           if (abs_y > gridh) or (abs_y < 1) then
             return true
           end
-          if (grid[abs_y][abs_x] ~= 1) then
+          if (grid[abs_y][abs_x] ~= 0) then
             return true
           end
         end
@@ -64,6 +55,13 @@ end
 
 frame=0
 function _update60()
+  if game_over then
+    if btnp(4) then
+      _init()
+    end
+    return
+  end
+
   frame+=1
   frame=frame%60
 
@@ -74,21 +72,23 @@ function _update60()
     active.x-=1
   elseif btnp(3) then
     move_down()
+  elseif btnp(2) then
+    slam_tetro()
   end
 
   if btnp(4) then
     rotate_tetro()
   end
 
-  -- TEMP shape switching code
-  if btnp(5) then
-    active.index+=1
-    active.tetro=tetros[active.index]
-  end
-
-
   if frame==0 then
     move_down()
+  end
+
+  check_lines()
+end
+
+function slam_tetro()
+  while move_down() do
   end
 end
 
@@ -96,9 +96,37 @@ function move_down()
   local new_y=active.y+1
   if collide(active:current_shape(),active.x,new_y) then
     add_to_grid(active:current_shape(),active.x,active.y)
-    select_new_active_tetro()
+    add_tetro()
+    return false
   else
     active.y = new_y
+    return true
+  end
+end
+
+function delete_line(line)
+  for row=line,2,-1 do
+    grid[row] = grid[row-1]
+  end
+  for i=1,gridw do
+    grid[1][i]=0
+  end
+  score += 1
+
+end
+
+function check_lines()
+  for i=1,gridh do
+    local block_count=0
+    for j=1,gridw do
+      if grid[i][j]~=0 then
+        block_count+=1
+      end
+    end
+    if block_count==gridw then
+      --printh("line delete: "..i)
+      delete_line(i)
+    end
   end
 end
 
@@ -108,13 +136,30 @@ function add_to_grid(shape,x,y)
       if value == 1 then
         local abs_x = x+local_x-1
         local abs_y = y+local_y-1
-        grid[abs_y][abs_x] = 0
+        grid[abs_y][abs_x] = 1
       end
     end
   end
 end
 
-function select_new_active_tetro()
+
+
+function add_tetro()
+  local new_index = ceil(rnd(#tetros))
+  active={
+    tetro=tetros[new_index],
+    x=4,
+    y=1,
+    rotation=1
+  }
+
+  active.current_shape=function(self)
+    return self.tetro.shapes[self.rotation]
+  end
+
+  if collide(active:current_shape(), active.x, active.y) then
+    game_over= true
+  end
 end
 
 function rotate_tetro()
@@ -142,7 +187,10 @@ function rotate_tetro()
 end
 
 function _draw()
-  cls()
+  if not game_over then
+    cls()
+  end
+
   for y,row in pairs(grid) do
     for x,cell in pairs(row) do
       if cell then
@@ -158,11 +206,17 @@ function _draw()
   for row_num,row in pairs(shape_to_draw) do
     for col_num,value in pairs(row) do
       if value==1 then
-        sspr(8, 0, bsz, bsz, (col_num-1)*bsz+active.x*bsz, (row_num-1)*bsz+active.y*bsz)
+        sspr(14, 0, bsz, bsz, (col_num-1)*bsz+active.x*bsz, (row_num-1)*bsz+active.y*bsz)
       end
     end
   end
 
+  print("score: "..score, 76, 6, 7)
+
+  if game_over then
+    rectfill(43,54,79,59,2)
+    print("GAME OVER",44, 54, 7)
+  end
 end
 
 -- TETRO DEFINITIONS 
@@ -265,10 +319,71 @@ tetros[5]={
     }
   }
 }
+
+
+tetros[6]={
+  name="leftcane",
+  shapes={
+    {
+      {1,1,0,0},
+      {0,1,0,0},
+      {0,1,0,0},
+      {0,0,0,0}
+    },
+    {
+      {0,0,1,0},
+      {1,1,1,0},
+      {0,0,0,0},
+      {0,0,0,0}
+    },
+    {
+      {0,1,0,0},
+      {0,1,0,0},
+      {0,1,1,0},
+      {0,0,0,0}
+    },
+    {
+      {0,0,0,0},
+      {1,1,1,0},
+      {1,0,0,0},
+      {0,0,0,0}
+    }
+  }
+}
+
+tetros[7]={
+  name="rightcane",
+  shapes={
+    {
+      {0,1,1,0},
+      {0,1,0,0},
+      {0,1,0,0},
+      {0,0,0,0}
+    },
+    {
+      {0,0,0,0},
+      {1,1,1,0},
+      {0,0,1,0},
+      {0,0,0,0}
+    },
+    {
+      {0,1,0,0},
+      {0,1,0,0},
+      {1,1,0,0},
+      {0,0,0,0}
+    },
+    {
+      {1,0,0,0},
+      {1,1,1,0},
+      {0,0,0,0},
+      {0,0,0,0}
+    }
+  }
+}
 __gfx__
-00000000777771000001000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000777771000001000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00700700777771000001000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00077000777771000001000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00077000777771000001000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000000001777761000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000000001777761000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00700700000001777761000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00077000000001777761000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00077000000001666661000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 00700700111111111111000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
