@@ -31,8 +31,8 @@ function _init()
     }
   }
 
-  active_tetro={
-    tetro_index=1,
+  active={
+    tetro=tetros[1],
     x=4,
     y=1,
     rotation=1
@@ -41,13 +41,25 @@ end
 
 function _update60()
   if btnp(1) then
-    active_tetro.x+=1
+    active.x+=1
   elseif btnp(0) then
-    active_tetro.x-=1
+    active.x-=1
+  end
+
+  if btnp(4) then
+    rotate_tetro()
   end
 end
 
 function add_block()
+end
+
+function rotate_tetro()
+  if active.rotation>=#active.tetro.shapes then
+    active.rotation=1
+  else
+    active.rotation+=1
+  end
 end
 
 function _draw()
@@ -61,16 +73,13 @@ function _draw()
   end
 
   -- draw active tetro
-  local index=active_tetro.tetro_index
-  local rotation=active_tetro.rotation
-  local xpos=active_tetro.x
-  local ypos=active_tetro.y
+  local rotation=active.rotation
 
-  local shape_to_draw=tetros[1].shapes[1]
+  local shape_to_draw=active.tetro.shapes[rotation]
   for row_num,row in pairs(shape_to_draw) do
     for col_num,value in pairs(row) do
       if value==1 then
-        sspr(8, 0, 6, 6, (col_num-1)*6+xpos*6, (row_num-1)*6+ypos*6)
+        sspr(8, 0, 6, 6, (col_num-1)*6+active.x*6, (row_num-1)*6+active.y*6)
       end
     end
   end
