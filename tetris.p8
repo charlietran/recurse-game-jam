@@ -8,8 +8,6 @@ gridw=10
 gridh=20
 --blocksize
 bsz=6
---how many tetrominos have been generated
-tetroct=0
 
 
 function _init()
@@ -20,6 +18,9 @@ function _init()
       grid[i][j]=0
     end
   end
+
+  --how many tetrominos have been generated
+  tetroct=0
 
   add_tetro()
 
