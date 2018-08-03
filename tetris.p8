@@ -8,6 +8,8 @@ gridw=10
 gridh=20
 --blocksize
 bsz=6
+--how many tetrominos have been generated
+tetroct=0
 
 
 function _init()
@@ -65,6 +67,16 @@ function _update60()
   frame+=1
   frame=frame%60
 
+  --Buttons--
+  --index: key--
+
+  --0: left
+  --1: right
+  --2: up
+  --3: down
+  --4: z/circle
+  --5: x/cross
+
   local active_shape=active.tetro.shapes[active.rotation]
   if btnp(1) and not collide(active_shape, active.x+1, active.y) then
     active.x+=1
@@ -72,11 +84,11 @@ function _update60()
     active.x-=1
   elseif btnp(3) then
     move_down()
-  elseif btnp(2) then
+  elseif btnp(5) then
     slam_tetro()
   end
 
-  if btnp(4) then
+  if btnp(2) then
     rotate_tetro()
   end
 
@@ -160,6 +172,10 @@ function add_tetro()
   if collide(active:current_shape(), active.x, active.y) then
     game_over= true
   end
+  tetroct+=1
+  --when tetroct hits 42, the last tetro that got added to the game grid
+  --generates a column of blocks that reach to the top of the grid
+  --printh(tetroct)
 end
 
 function rotate_tetro()
