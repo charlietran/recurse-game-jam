@@ -174,9 +174,10 @@ function add_tetro()
     game_over= true
   end
   tetroct+=1
-  --when tetroct hits 42, the last tetro that got added to the game grid
+  --at some point, the last tetro that got added to the game grid
   --generates a column of blocks that reach to the top of the grid
-  --printh(tetroct)
+  --usually around 30-50 tetroct
+  printh(tetroct)
 end
 
 function rotate_tetro()
