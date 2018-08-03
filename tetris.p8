@@ -231,9 +231,12 @@ function _draw()
 
   print("score: "..score, 76, 6, 7)
 
+  local game_over_x=44
+  local game_over_y=54
+
   if game_over then
-    rectfill(43,54,79,59,2)
-    print("GAME OVER",44, 54, 7)
+    rectfill(game_over_x-1,game_over_y,79,59,2)
+    print("GAME OVER",game_over_x, game_over_y, 7)
   end
 end
 
