@@ -8,7 +8,14 @@ gridw=10
 gridh=20
 --blocksize
 bsz=6
-
+--how many frames have been rendered
+frame=0
+--how many lines to clear to reach next level
+lines_per_level=8
+--level 1 step time
+base_step_time=60
+--how much to decrease step_time by each level
+difficulty_rate=2/3
 
 function _init()
   grid={}
@@ -20,11 +27,14 @@ function _init()
   end
 
   --how many tetrominos have been generated
-  tetroct=0
+  tetro_ct=0
+  --how long to wait before dropping tetro one block
+  step_time=base_step_time
+  curr_level=1
 
   add_tetro()
 
-  score=0
+  lines_cleared=0
   game_over=false
 
 end
@@ -56,7 +66,6 @@ function collide(shape, newx, newy)
     return false
 end
 
-frame=0
 function _update60()
   if game_over then
     if btnp(4) then
@@ -66,7 +75,7 @@ function _update60()
   end
 
   frame+=1
-  frame=frame%60
+  frame=frame%step_time
 
   --Buttons--
   --index: key--
@@ -126,7 +135,13 @@ function delete_line(line)
   for i=1,gridw do
     grid[1][i]=0
   end
-  score += 1
+  lines_cleared += 1
+
+  if lines_cleared%lines_per_level == 0 then
+    curr_level+=1
+    step_time = ceil(base_step_time * (difficulty_rate^(curr_level-1)))
+    --printh("level:"..curr_level.." step time "..step_time)
+  end
 
 end
 
@@ -175,7 +190,7 @@ function add_tetro()
   if collide(active:current_shape(), active.x, active.y) then
     game_over= true
   end
-  tetroct+=1
+  tetro_ct+=1
 end
 
 function rotate_tetro()
@@ -227,7 +242,8 @@ function _draw()
     end
   end
 
-  print("score: "..score, 76, 6, 7)
+  print("lines: "..lines_cleared, 76, 6, 7)
+  print("level: "..curr_level, 76, 14, 7)
 
   local game_over_x=44
   local game_over_y=54
