@@ -119,7 +119,9 @@ end
 
 function delete_line(line)
   for row=line,2,-1 do
-    grid[row] = grid[row-1]
+    for i=1, gridw do
+      grid[row][i] = grid[row-1][i]
+    end
   end
   for i=1,gridw do
     grid[1][i]=0
@@ -174,10 +176,6 @@ function add_tetro()
     game_over= true
   end
   tetroct+=1
-  --at some point, the last tetro that got added to the game grid
-  --generates a column of blocks that reach to the top of the grid
-  --usually around 30-50 tetroct
-  printh(tetroct)
 end
 
 function rotate_tetro()
@@ -235,7 +233,7 @@ function _draw()
   local game_over_y=54
 
   if game_over then
-    rectfill(game_over_x-1,game_over_y,79,59,2)
+    rectfill(game_over_x-1,game_over_y,79,59,8)
     print("GAME OVER",game_over_x, game_over_y, 7)
   end
 end
