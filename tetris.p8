@@ -43,31 +43,28 @@ function _init()
 
 end
 
+--returns true if shape is overlapping with existing block/out of bounds
 function collide(shape, newx, newy)
-      --{0,1,1,0},
-      --{1,1,0,0},
-      --{0,0,0,0},
-      --{0,0,0,0}
-    for local_y,row in pairs(shape) do
-      for local_x,value in pairs(row) do
-        if value==1 then
-          local abs_x = newx+local_x-1
-          local abs_y = newy+local_y-1
+  for local_y,row in pairs(shape) do
+    for local_x,value in pairs(row) do
+      if value==1 then
+        local abs_x = newx+local_x-1
+        local abs_y = newy+local_y-1
 
-          if (abs_x > gridw) or (abs_x < 1) then
-            return true
-          end
-          if (abs_y > gridh) or (abs_y < 1) then
-            return true
-          end
-          if (grid[abs_y][abs_x] ~= 0) then
-            return true
-          end
+        if (abs_x > gridw) or (abs_x < 1) then
+          return true
+        end
+        if (abs_y > gridh) or (abs_y < 1) then
+          return true
+        end
+        if (grid[abs_y][abs_x] ~= 0) then
+          return true
         end
       end
     end
-   
-    return false
+  end
+ 
+  return false
 end
 
 function _update60()
@@ -221,11 +218,30 @@ function rotate_tetro()
   active.rotation=new_rotation
 end
 
+function draw_block(color,grid_x,grid_y)
+  --the start coordinate of the block with the designated color
+  sprite_position=8+(color*bsz)
+  sspr(sprite_position, 0, bsz, bsz, grid_x*bsz, grid_y*bsz)
+end
+
+function draw_tetro(shape,color,tetro_x,tetro_y)
+  for row_num,row in pairs(shape) do
+    for col_num,value in pairs(row) do
+      if value==1 then
+        grid_x = col_num-1+tetro_x
+        grid_y = row_num-1+tetro_y
+        draw_block(color,grid_x,grid_y)
+      end
+    end
+  end
+end
+
 function _draw()
   if not game_over then
     cls()
   end
 
+  --draw the grid
   for y,row in pairs(grid) do
     for x,cell in pairs(row) do
       if cell then
@@ -236,17 +252,8 @@ function _draw()
 
   -- draw active tetro
   local rotation=active.rotation
-
   local shape_to_draw=active.tetro.shapes[rotation]
-  for row_num,row in pairs(shape_to_draw) do
-    for col_num,value in pairs(row) do
-      if value==1 then
-        --the start coordinate of the block with the designated color
-        sprite_position=8+(active.tetro.color*6)
-        sspr(sprite_position, 0, bsz, bsz, (col_num-1)*bsz+active.x*bsz, (row_num-1)*bsz+active.y*bsz)
-      end
-    end
-  end
+  draw_tetro(shape_to_draw, active.tetro.color, active.x, active.y)
 
   print("lines: "..lines_cleared, 76, 6, 7)
   print("level: "..curr_level, 76, 14, 7)
