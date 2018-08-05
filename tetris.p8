@@ -8,8 +8,9 @@ gridw=10
 gridh=20
 --blocksize
 bsz=6
---how many frames have been rendered
-frame=0
+--how many frames have been rendered in the current step
+--when this reaches 0 at the end of each step, tetro moves down
+frame_step=0
 --how many lines to clear to reach next level
 lines_per_level=8
 --level 1 step time
@@ -36,6 +37,9 @@ function _init()
 
   lines_cleared=0
   game_over=false
+
+  --play the tetris theme(sounds terrible atm)
+  --music(0)
 
 end
 
@@ -74,10 +78,10 @@ function _update60()
     return
   end
 
-  frame+=1
-  frame=frame%step_time
+  frame_step+=1
+  frame_step=frame_step%step_time
 
-  --Buttons--
+  --buttons--
   --index: key--
 
   --0: left
@@ -102,7 +106,7 @@ function _update60()
     rotate_tetro()
   end
 
-  if frame==0 then
+  if frame_step==0 then
     move_down()
   end
 
@@ -117,7 +121,7 @@ end
 function move_down()
   local new_y=active.y+1
   if collide(active:current_shape(),active.x,new_y) then
-    add_to_grid(active:current_shape(),active.x,active.y)
+    add_to_grid(active:current_shape(),active.tetro.color,active.x,active.y)
     add_tetro()
     return false
   else
@@ -160,13 +164,13 @@ function check_lines()
   end
 end
 
-function add_to_grid(shape,x,y)
+function add_to_grid(shape,color,x,y)
   for local_y, row in pairs(shape) do
     for local_x, value in pairs(row) do
       if value == 1 then
         local abs_x = x+local_x-1
         local abs_y = y+local_y-1
-        grid[abs_y][abs_x] = 1
+        grid[abs_y][abs_x] = color
       end
     end
   end
@@ -237,7 +241,9 @@ function _draw()
   for row_num,row in pairs(shape_to_draw) do
     for col_num,value in pairs(row) do
       if value==1 then
-        sspr(14, 0, bsz, bsz, (col_num-1)*bsz+active.x*bsz, (row_num-1)*bsz+active.y*bsz)
+        --the start coordinate of the block with the designated color
+        sprite_position=8+(active.tetro.color*6)
+        sspr(sprite_position, 0, bsz, bsz, (col_num-1)*bsz+active.x*bsz, (row_num-1)*bsz+active.y*bsz)
       end
     end
   end
@@ -250,17 +256,18 @@ function _draw()
 
   if game_over then
     rectfill(game_over_x-1,game_over_y,79,59,8)
-    print("GAME OVER",game_over_x, game_over_y, 7)
+    print("game over",game_over_x, game_over_y, 7)
   end
 end
 
--- TETRO DEFINITIONS 
+-- tetro definitions 
 --------------------------------
 
 tetros={}
 
 tetros[1]={
   name="stick",
+  color=1,
   shapes={
     {
       {0,1,0,0},
@@ -279,6 +286,7 @@ tetros[1]={
 
 tetros[2]={
   name="square",
+  color=2,
   shapes={
     {
       {0,1,1,0},
@@ -291,6 +299,7 @@ tetros[2]={
 
 tetros[3]={
   name="t",
+  color=3,
   shapes={
     {
       {0,1,0,0},
@@ -321,6 +330,7 @@ tetros[3]={
 
 tetros[4]={
   name="rightsnake",
+  color=4,
   shapes={
     {
       {0,1,1,0},
@@ -339,6 +349,7 @@ tetros[4]={
 
 tetros[5]={
   name="leftsnake",
+  color=5,
   shapes={
     {
       {1,1,0,0},
@@ -358,6 +369,7 @@ tetros[5]={
 
 tetros[6]={
   name="leftcane",
+  color=6,
   shapes={
     {
       {1,1,0,0},
@@ -388,6 +400,7 @@ tetros[6]={
 
 tetros[7]={
   name="rightcane",
+  color=7,
   shapes={
     {
       {0,1,1,0},
@@ -416,12 +429,12 @@ tetros[7]={
   }
 }
 __gfx__
-00000000000001777761000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000000001777761000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00700700000001777761000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00077000000001777761000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00077000000001666661000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00700700111111111111000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000000001777761aaaa91bbbb31eeee21888821999941cccc51000000000000000000000000000000000000000000000000000000000000000000000000
+00000000000001777761aaaa91bbbb31eeee21888821999941cccc51000000000000000000000000000000000000000000000000000000000000000000000000
+00700700000001777761aaaa91bbbb31eeee21888821999941cccc51000000000000000000000000000000000000000000000000000000000000000000000000
+00077000000001777761aaaa91bbbb31eeee21888821999941cccc51000000000000000000000000000000000000000000000000000000000000000000000000
+00077000000001666661999991333331222221222221444441555551000000000000000000000000000000000000000000000000000000000000000000000000
+00700700111111111111111111111111111111111111111111111111000000000000000000000000000000000000000000000000000000000000000000000000
 __sfx__
 000100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 001000000000002000040000500000000020000400005000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
