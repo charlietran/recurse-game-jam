@@ -17,8 +17,15 @@ lines_per_level=8
 base_step_time=60
 --how much to decrease step_time by each level
 difficulty_rate=2/3
+--sprite number of the ghost block
+ghost_color=1
 
 function _init()
+
+  --grid value:meaning
+  --0: empty block
+  --1: ghost block
+  --2-8: filled block, number denotes color
   grid={}
   for i=1,gridh do
     grid[i]={}
@@ -57,7 +64,7 @@ function collide(shape, newx, newy)
         if (abs_y > gridh) or (abs_y < 1) then
           return true
         end
-        if (grid[abs_y][abs_x] ~= 0) then
+        if (grid[abs_y][abs_x] > 1) then
           return true
         end
       end
@@ -94,35 +101,45 @@ function _update60()
   elseif btnp(0) and not collide(active_shape, active.x-1, active.y) then
     active.x-=1
   elseif btnp(3) then
-    move_down()
+    move_down(active)
   elseif btnp(5) then
-    slam_tetro()
+    slam_tetro(active)
   end
 
   if btnp(2) then
-    rotate_tetro()
+    rotate_tetro(active)
   end
 
+  --add ghost tetro
+  ghost={}
+  setmetatable(ghost, {__index=active})
+  function ghost.color()
+    return ghost_color
+  end
+  slam_tetro(ghost)
+
   if frame_step==0 then
-    move_down()
+    move_down(active)
   end
 
   check_lines()
 end
 
-function slam_tetro()
-  while move_down() do
+function slam_tetro(tet_obj)
+  while move_down(tet_obj) do
   end
 end
 
-function move_down()
-  local new_y=active.y+1
-  if collide(active:current_shape(),active.x,new_y) then
-    add_to_grid(active:current_shape(),active.tetro.color,active.x,active.y)
-    add_tetro()
+function move_down(tet_obj, add)
+  local new_y=tet_obj.y+1
+  if collide(tet_obj:current_shape(),tet_obj.x,new_y) then
+    if tet_obj:color() ~= ghost_color then
+      add_to_grid(tet_obj:current_shape(),tet_obj:color(),tet_obj.x,tet_obj.y)
+      add_tetro()
+    end
     return false
   else
-    active.y = new_y
+    tet_obj.y = new_y
     return true
   end
 end
@@ -150,7 +167,7 @@ function check_lines()
   for i=1,gridh do
     local block_count=0
     for j=1,gridw do
-      if grid[i][j]~=0 then
+      if grid[i][j]>ghost_color then
         block_count+=1
       end
     end
@@ -174,18 +191,33 @@ function add_to_grid(shape,color,x,y)
 end
 
 
-
-function add_tetro()
+function make_tetro()
   local new_index = ceil(rnd(#tetros))
-  active={
+  new_tetro={
     tetro=tetros[new_index],
     x=4,
     y=1,
     rotation=1
   }
+  return new_tetro
+end
+
+
+function add_tetro()
+  if not active then
+    next_tetro = make_tetro()
+    active = make_tetro()
+  else
+    active = next_tetro
+    next_tetro = make_tetro()
+  end
 
   active.current_shape=function(self)
     return self.tetro.shapes[self.rotation]
+  end
+
+  active.color =function(self)
+    return self.tetro.color
   end
 
   if collide(active:current_shape(), active.x, active.y) then
@@ -194,43 +226,45 @@ function add_tetro()
   tetro_ct+=1
 end
 
-function rotate_tetro()
-  local new_rotation=active.rotation
-  if new_rotation>=#active.tetro.shapes then
+function rotate_tetro(tet_obj)
+  local new_rotation=tet_obj.rotation
+  if new_rotation>=#tet_obj.tetro.shapes then
     new_rotation=1
   else
     new_rotation+=1
   end
 
-  local new_shape=active.tetro.shapes[new_rotation]
+  local new_shape=tet_obj.tetro.shapes[new_rotation]
 
-  if collide(new_shape,active.x,active.y) then
-    if not collide(new_shape,active.x-1,active.y) then
-      active.x-=1
-    elseif not collide(new_shape,active.x-2,active.y) then
-      active.x-=2
-    elseif not collide(new_shape,active.x+1,active.y) then
-      active.x+=1
+  if collide(new_shape,tet_obj.x,tet_obj.y) then
+    if not collide(new_shape,tet_obj.x-1,tet_obj.y) then
+      tet_obj.x-=1
+    elseif not collide(new_shape,tet_obj.x-2,tet_obj.y) then
+      tet_obj.x-=2
+    elseif not collide(new_shape,tet_obj.x+1,tet_obj.y) then
+      tet_obj.x+=1
     else
       return
     end
   end
-  active.rotation=new_rotation
+  tet_obj.rotation=new_rotation
 end
 
 function draw_block(color,grid_x,grid_y)
-  --the start coordinate of the block with the designated color
+  --the start sprite coordinate of the block with the designated color
   sprite_position=8+(color*bsz)
   sspr(sprite_position, 0, bsz, bsz, grid_x*bsz, grid_y*bsz)
 end
 
-function draw_tetro(shape,color,tetro_x,tetro_y)
+function draw_tetro(tet_obj)
+  local rotation=tet_obj.rotation
+  local shape=tet_obj.tetro.shapes[rotation]
   for row_num,row in pairs(shape) do
     for col_num,value in pairs(row) do
       if value==1 then
-        grid_x = col_num-1+tetro_x
-        grid_y = row_num-1+tetro_y
-        draw_block(color,grid_x,grid_y)
+        grid_x = col_num-1+tet_obj.x
+        grid_y = row_num-1+tet_obj.y
+        draw_block(tet_obj:color(),grid_x,grid_y)
       end
     end
   end
@@ -250,13 +284,12 @@ function _draw()
     end
   end
 
-  -- draw active tetro
-  local rotation=active.rotation
-  local shape_to_draw=active.tetro.shapes[rotation]
-  draw_tetro(shape_to_draw, active.tetro.color, active.x, active.y)
+  draw_tetro(active)
+  draw_tetro(ghost)
 
   print("lines: "..lines_cleared, 76, 6, 7)
   print("level: "..curr_level, 76, 14, 7)
+  --print("next ",84,26,7)
 
   local game_over_x=44
   local game_over_y=54
@@ -274,7 +307,7 @@ tetros={}
 
 tetros[1]={
   name="stick",
-  color=1,
+  color=2,
   shapes={
     {
       {0,1,0,0},
@@ -293,7 +326,7 @@ tetros[1]={
 
 tetros[2]={
   name="square",
-  color=2,
+  color=3,
   shapes={
     {
       {0,1,1,0},
@@ -306,7 +339,7 @@ tetros[2]={
 
 tetros[3]={
   name="t",
-  color=3,
+  color=4,
   shapes={
     {
       {0,1,0,0},
@@ -337,7 +370,7 @@ tetros[3]={
 
 tetros[4]={
   name="rightsnake",
-  color=4,
+  color=5,
   shapes={
     {
       {0,1,1,0},
@@ -356,7 +389,7 @@ tetros[4]={
 
 tetros[5]={
   name="leftsnake",
-  color=5,
+  color=6,
   shapes={
     {
       {1,1,0,0},
@@ -376,7 +409,7 @@ tetros[5]={
 
 tetros[6]={
   name="leftcane",
-  color=6,
+  color=7,
   shapes={
     {
       {1,1,0,0},
@@ -407,7 +440,7 @@ tetros[6]={
 
 tetros[7]={
   name="rightcane",
-  color=7,
+  color=8,
   shapes={
     {
       {0,1,1,0},
@@ -436,11 +469,11 @@ tetros[7]={
   }
 }
 __gfx__
-00000000000001777761aaaa91bbbb31eeee21888821999941cccc51050501000000000000000000000000000000000000000000000000000000000000000000
-00000000000001777761aaaa91bbbb31eeee21888821999941cccc51505051000000000000000000000000000000000000000000000000000000000000000000
-00700700000001777761aaaa91bbbb31eeee21888821999941cccc51050501000000000000000000000000000000000000000000000000000000000000000000
-00077000000001777761aaaa91bbbb31eeee21888821999941cccc51505051000000000000000000000000000000000000000000000000000000000000000000
-00077000000001666661999991333331222221222221444441555551050501000000000000000000000000000000000000000000000000000000000000000000
+00000000000001050501aaaa91bbbb31eeee21888821999941cccc51777761000000000000000000000000000000000000000000000000000000000000000000
+00000000000001505051aaaa91bbbb31eeee21888821999941cccc51777761000000000000000000000000000000000000000000000000000000000000000000
+00700700000001050501aaaa91bbbb31eeee21888821999941cccc51777761000000000000000000000000000000000000000000000000000000000000000000
+00077000000001505051aaaa91bbbb31eeee21888821999941cccc51777761000000000000000000000000000000000000000000000000000000000000000000
+00077000000001050501999991333331222221222221444441555551666661000000000000000000000000000000000000000000000000000000000000000000
 00700700111111111111111111111111111111111111111111111111111111000000000000000000000000000000000000000000000000000000000000000000
 __sfx__
 000100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
