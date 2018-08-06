@@ -22,7 +22,7 @@ ghost_color=1
 
 function _init()
 
-  --grid value:meaning
+  --grid value meanings
   --0: empty block
   --1: ghost block
   --2-8: filled block, number denotes color
@@ -125,12 +125,14 @@ function _update60()
   check_lines()
 end
 
+--drop tetro as far as it will go
 function slam_tetro(tet_obj)
   while move_down(tet_obj) do
   end
 end
 
-function move_down(tet_obj, add)
+--move a tetro down one block
+function move_down(tet_obj)
   local new_y=tet_obj.y+1
   if collide(tet_obj:current_shape(),tet_obj.x,new_y) then
     if tet_obj:color() ~= ghost_color then
@@ -144,6 +146,8 @@ function move_down(tet_obj, add)
   end
 end
 
+--replace a line with the one above it repeatedly until the top,
+--which becomes an empty row
 function delete_line(line)
   for row=line,2,-1 do
     for i=1, gridw do
@@ -158,11 +162,11 @@ function delete_line(line)
   if lines_cleared%lines_per_level == 0 then
     curr_level+=1
     step_time = ceil(base_step_time * (difficulty_rate^(curr_level-1)))
-    --printh("level:"..curr_level.." step time "..step_time)
   end
 
 end
 
+--check the grid for a filled lines and delete them
 function check_lines()
   for i=1,gridh do
     local block_count=0
@@ -172,12 +176,12 @@ function check_lines()
       end
     end
     if block_count==gridw then
-      --printh("line delete: "..i)
       delete_line(i)
     end
   end
 end
 
+--add the active tetro to the grid
 function add_to_grid(shape,color,x,y)
   for local_y, row in pairs(shape) do
     for local_x, value in pairs(row) do
@@ -191,41 +195,44 @@ function add_to_grid(shape,color,x,y)
 end
 
 
+--generate a new tetro object(but lua doesn't really have those)
 function make_tetro()
   local new_index = ceil(rnd(#tetros))
-  new_tetro={
+  local new_tetro={
     tetro=tetros[new_index],
     x=4,
     y=1,
     rotation=1
   }
+  new_tetro.current_shape=function(self)
+    return self.tetro.shapes[self.rotation]
+  end
+
+  new_tetro.color =function(self)
+    return self.tetro.color
+  end
+
   return new_tetro
 end
 
 
+--replace active tetro with next_tetro, generate a new next_tetro
 function add_tetro()
   if not active then
-    next_tetro = make_tetro()
-    active = make_tetro()
+    next_tetro=make_tetro()
+    active=make_tetro()
   else
-    active = next_tetro
-    next_tetro = make_tetro()
-  end
-
-  active.current_shape=function(self)
-    return self.tetro.shapes[self.rotation]
-  end
-
-  active.color =function(self)
-    return self.tetro.color
+    active=next_tetro
+    next_tetro=make_tetro()
   end
 
   if collide(active:current_shape(), active.x, active.y) then
-    game_over= true
+    game_over=true
   end
   tetro_ct+=1
 end
 
+--rotate a tetro to to its next shape (90 degrees clockwise)
 function rotate_tetro(tet_obj)
   local new_rotation=tet_obj.rotation
   if new_rotation>=#tet_obj.tetro.shapes then
@@ -250,20 +257,36 @@ function rotate_tetro(tet_obj)
   tet_obj.rotation=new_rotation
 end
 
-function draw_block(color,grid_x,grid_y)
-  --the start sprite coordinate of the block with the designated color
-  sprite_position=8+(color*bsz)
-  sspr(sprite_position, 0, bsz, bsz, grid_x*bsz, grid_y*bsz)
+--draw a block to an absolute position on screen
+function draw_block(color, x, y)
+  local sprite_position=8+(color*bsz)
+  sspr(sprite_position, 0, bsz, bsz, x, y)
 end
 
-function draw_tetro(tet_obj)
+--draw an entire tetro onto the grid
+function draw_tetro_on_grid(tet_obj)
   local rotation=tet_obj.rotation
   local shape=tet_obj.tetro.shapes[rotation]
   for row_num,row in pairs(shape) do
     for col_num,value in pairs(row) do
       if value==1 then
-        grid_x = col_num-1+tet_obj.x
-        grid_y = row_num-1+tet_obj.y
+        abs_x = (col_num-1+tet_obj.x)*bsz
+        abs_y = (row_num-1+tet_obj.y)*bsz
+        draw_block(tet_obj:color(),abs_x,abs_y)
+      end
+    end
+  end
+end
+
+--draw a preview of the next tetro in the queue off the grid
+function draw_next_tetro_preview(tet_obj)
+  local next_x=80
+  local next_y=34
+  for row_num,row in pairs(tet_obj.tetro.shapes[1]) do
+    for col_num,value in pairs(row) do
+      if value==1 then
+        grid_x = col_num*bsz+next_x
+        grid_y = row_num*bsz+next_y
         draw_block(tet_obj:color(),grid_x,grid_y)
       end
     end
@@ -284,12 +307,13 @@ function _draw()
     end
   end
 
-  draw_tetro(active)
-  draw_tetro(ghost)
+  draw_tetro_on_grid(active)
+  draw_tetro_on_grid(ghost)
+  draw_next_tetro_preview(next_tetro)
 
   print("lines: "..lines_cleared, 76, 6, 7)
   print("level: "..curr_level, 76, 14, 7)
-  --print("next ",84,26,7)
+  print("next piece:",76,28,7)
 
   local game_over_x=44
   local game_over_y=54
