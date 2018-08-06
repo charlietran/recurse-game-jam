@@ -48,6 +48,99 @@ function _init()
   --music(0)
 end
 
+function _update60()
+  if game_over then
+    if btnp(4) then
+      _init()
+    end
+    return
+  end
+
+  frame_step+=1
+  frame_step=frame_step%step_time
+
+  grid:update()
+  player:update()
+  ghost:update()
+end
+
+function _draw()
+  -- clear the screen every frame, unless it's game over
+  if not game_over then
+    cls()
+  end
+
+  grid:draw()
+  player:draw()
+  ghost:draw()
+
+  print("lines: "..lines_cleared, 76, 6, 7)
+  print("level: "..curr_level, 76, 14, 7)
+  print("next piece:",76,28,7)
+
+  if game_over then
+    local game_over_x=44
+    local game_over_y=54
+    rectfill(game_over_x-1,game_over_y,79,59,8)
+    print("game over",game_over_x, game_over_y, 7)
+  end
+end
+
+--draw a block to an absolute position on screen
+function draw_block(color, x, y)
+  local sprite_position=8+(color*bsz)
+  sspr(sprite_position, 0, bsz, bsz, x, y)
+end
+
+--returns true if shape is overlapping with existing block/out of bounds
+function collide(shape, new_x, new_y)
+  for local_y,row in pairs(shape) do
+    for local_x,value in pairs(row) do
+      if value==1 then
+        local abs_x = new_x+local_x-1
+        local abs_y = new_y+local_y-1
+
+        if (abs_x > gridw) or (abs_x < 1) then
+          return true
+        end
+        if (abs_y > gridh) or (abs_y < 1) then
+          return true
+        end
+        if (grid.matrix[abs_y][abs_x] > ghost_color) then
+          return true
+        end
+      end
+    end
+  end
+ 
+  return false
+end
+
+--drop tetro as far as it will go
+function slam_tetro(t)
+  while move_down(t) do
+  end
+end
+
+-- tries to move a tetro down one block
+-- if it collides with something in the grid, adds the current
+-- shape to the grid and player gets a new tetro
+-- otherwise, moves the tetro down by incrementing tetro's y value
+function move_down(t)
+  local new_y=t.y+1
+  if collide(t:current_shape(),t.x,new_y) then
+    -- don't modify the grid if testing a ghost ttro
+    if not t.is_ghost then
+      grid:add(t:current_shape(),t.color,t.x,t.y)
+      player:new_tetro()
+    end
+    return false
+  else
+    t.y = new_y
+    return true
+  end
+end
+
 -- grid object and functions
 ----------------------------------
 
@@ -176,7 +269,6 @@ end
 function player:draw()
   local at=self.active_tetro
   grid:draw_shape(at:current_shape(),at.color,at.x,at.y)
-  grid:draw_shape(ghost:current_shape(),ghost_color,ghost.x,ghost.y)
 
   self:draw_next_tetro_preview()
 end
@@ -228,6 +320,7 @@ function player:new_tetro()
   self.active_tetro=self.next_tetro
   self.next_tetro=random_tetro()
 
+  -- if the new tetro is already touching something, then game's over
   if collide(self.active_tetro:current_shape(), self.active_tetro.x, self.active_tetro.y) then
     game_over=true
   end
@@ -237,121 +330,27 @@ end
 -- end player functions
 ----------------------------------
 
---draw a block to an absolute position on screen
-function draw_block(color, x, y)
-  local sprite_position=8+(color*bsz)
-  sspr(sprite_position, 0, bsz, bsz, x, y)
-end
-
 -- the ghost tetro, which shows the player a preview at the bottom of the grid 
 -- of where their tetro will go when it drops 
-ghost={}
+-- quacks like a tetro so that it can use slam_tetro() to be drawn
+-- as far down as possible
 
+ghost={is_ghost=true,color=ghost_color}
 function ghost:update()
-  -- set the ghost metatable index so that it looks for missing values inside
-  -- the "active" object
+  -- copy properties of the active tetro
   self.x=player.active_tetro.x
   self.y=player.active_tetro.y
-  self.color=ghost_color
 
+  -- move it as far down as possible
   slam_tetro(self)
 end
 
-function ghost:color()
-  return ghost_color
+function ghost:draw()
+  grid:draw_shape(self:current_shape(),ghost_color,self.x,self.y)
 end
 
 function ghost:current_shape()
   return player.active_tetro:current_shape()
-end
-
-
---returns true if shape is overlapping with existing block/out of bounds
-function collide(shape, new_x, new_y)
-  for local_y,row in pairs(shape) do
-    for local_x,value in pairs(row) do
-      if value==1 then
-        local abs_x = new_x+local_x-1
-        local abs_y = new_y+local_y-1
-
-        if (abs_x > gridw) or (abs_x < 1) then
-          return true
-        end
-        if (abs_y > gridh) or (abs_y < 1) then
-          return true
-        end
-        if (grid.matrix[abs_y][abs_x] > ghost_color) then
-          return true
-        end
-      end
-    end
-  end
- 
-  return false
-end
-
-function _update60()
-  if game_over then
-    if btnp(4) then
-      _init()
-    end
-    return
-  end
-
-  frame_step+=1
-  frame_step=frame_step%step_time
-
-  player:update()
-
-  if frame_step==0 then
-    move_down(player.active_tetro)
-  end
-
-  ghost:update()
-  grid:update()
-end
-
---drop tetro as far as it will go
-function slam_tetro(tet_obj)
-  while move_down(tet_obj) do
-  end
-end
-
---move a tetro down one block
-function move_down(tet_obj)
-  local new_y=tet_obj.y+1
-  if collide(tet_obj:current_shape(),tet_obj.x,new_y) then
-    if tet_obj.color ~= ghost_color then
-      grid:add(tet_obj:current_shape(),tet_obj.color,tet_obj.x,tet_obj.y)
-      player:new_tetro()
-    end
-    return false
-  else
-    tet_obj.y = new_y
-    return true
-  end
-end
-
-
-function _draw()
-  -- clear the screen every frame, unless it's game over
-  if not game_over then
-    cls()
-  end
-
-  grid:draw()
-  player:draw()
-
-  print("lines: "..lines_cleared, 76, 6, 7)
-  print("level: "..curr_level, 76, 14, 7)
-  print("next piece:",76,28,7)
-
-  if game_over then
-    local game_over_x=44
-    local game_over_y=54
-    rectfill(game_over_x-1,game_over_y,79,59,8)
-    print("game over",game_over_x, game_over_y, 7)
-  end
 end
 
 -- tetro object
