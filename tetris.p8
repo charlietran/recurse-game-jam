@@ -42,8 +42,7 @@ function _init()
   game_over=false
 
   grid:init()
-
-  add_tetro()
+  player:init()
 
   --play the tetris theme(sounds terrible atm)
   --music(0)
@@ -77,10 +76,6 @@ function grid:draw()
   -- the sprite sheet contains all possible tetris blocks at coordinates (8,0)
   -- each block sprite is 6px by 6px (defined in bsz constant)
   -- so a cell value of 0 will draw the sprite at (8,0), 1 will draw (14,0), etc
-
-  self:draw_shape(active:current_shape(),active:color(),active.x,active.y)
-  self:draw_shape(ghost:current_shape(),ghost_color,ghost.x,ghost.y)
-  draw_next_tetro_preview(next_tetro)
 
   for y,row in pairs(self.matrix) do
     for x,cell in pairs(row) do
@@ -160,26 +155,94 @@ end
 -- end grid functions
 ----------------------------------
 
+
+-- the player object
+----------------------------------
+player={}
+
+function player:init()
+  self.active_tetro=random_tetro()
+  self.next_tetro=random_tetro()
+end
+
+function player:update()
+  if frame_step==0 then
+    move_down(self.active_tetro)
+  end
+
+  player:handle_input()
+end
+
+function player:draw()
+  local at=self.active_tetro
+  grid:draw_shape(at:current_shape(),at.color,at.x,at.y)
+  grid:draw_shape(ghost:current_shape(),ghost_color,ghost.x,ghost.y)
+
+  self:draw_next_tetro_preview()
+end
+
+function player:handle_input()
+  local active_shape=self.active_tetro:current_shape()
+
+  --buttons--
+  --index: key--
+
+  --0: left
+  --1: right
+  --2: up
+  --3: down
+  --4: z/circle
+  --5: x/cross
+  if btnp(1) and not collide(active_shape, self.active_tetro.x+1, self.active_tetro.y) then
+    self.active_tetro.x+=1
+  elseif btnp(0) and not collide(active_shape, self.active_tetro.x-1, self.active_tetro.y) then
+    self.active_tetro.x-=1
+  elseif btnp(3) then
+    move_down(self.active_tetro)
+  elseif btnp(5) then
+    slam_tetro(self.active_tetro)
+  end
+
+  if btnp(2) then
+    self.active_tetro:rotate()
+  end
+end
+
+function player:draw_next_tetro_preview()
+  local next_x=80
+  local next_y=34
+  local grid_x,grid_y
+  for row_num,row in pairs(self.next_tetro.shapes[1]) do
+    for col_num,value in pairs(row) do
+      if value==1 then
+        grid_x = col_num*bsz+next_x
+        grid_y = row_num*bsz+next_y
+        draw_block(self.next_tetro.color,grid_x,grid_y)
+      end
+    end
+  end
+end
+
+-- replace active tetro with next_tetro, generate a new next_tetro
+function player:new_tetro()
+  self.active_tetro=self.next_tetro
+  self.next_tetro=random_tetro()
+
+  if collide(self.active_tetro:current_shape(), self.active_tetro.x, self.active_tetro.y) then
+    game_over=true
+  end
+  tetro_ct+=1
+end
+
+-- end player functions
+----------------------------------
+
 --draw a block to an absolute position on screen
 function draw_block(color, x, y)
   local sprite_position=8+(color*bsz)
   sspr(sprite_position, 0, bsz, bsz, x, y)
 end
 
---draw a preview of the next tetro in the queue off the grid
-function draw_next_tetro_preview(tet_obj)
-  local next_x=80
-  local next_y=34
-  for row_num,row in pairs(tet_obj.tetro.shapes[1]) do
-    for col_num,value in pairs(row) do
-      if value==1 then
-        grid_x = col_num*bsz+next_x
-        grid_y = row_num*bsz+next_y
-        draw_block(tet_obj:color(),grid_x,grid_y)
-      end
-    end
-  end
-end
 -- the ghost tetro, which shows the player a preview at the bottom of the grid 
 -- of where their tetro will go when it drops 
 ghost={}
@@ -187,11 +250,9 @@ ghost={}
 function ghost:update()
   -- set the ghost metatable index so that it looks for missing values inside
   -- the "active" object
-  self.x=active.x
-  self.y=active.y
-  self.color=function()
-    return ghost_color
-  end
+  self.x=player.active_tetro.x
+  self.y=player.active_tetro.y
+  self.color=ghost_color
 
   slam_tetro(self)
 end
@@ -201,7 +262,7 @@ function ghost:color()
 end
 
 function ghost:current_shape()
-  return active:current_shape()
+  return player.active_tetro:current_shape()
 end
 
 
@@ -240,34 +301,10 @@ function _update60()
   frame_step+=1
   frame_step=frame_step%step_time
 
-  --buttons--
-  --index: key--
-
-  --0: left
-  --1: right
-  --2: up
-  --3: down
-  --4: z/circle
-  --5: x/cross
-
-  local active_shape=active.tetro.shapes[active.rotation]
-  if btnp(1) and not collide(active_shape, active.x+1, active.y) then
-    active.x+=1
-  elseif btnp(0) and not collide(active_shape, active.x-1, active.y) then
-    active.x-=1
-  elseif btnp(3) then
-    move_down(active)
-  elseif btnp(5) then
-    slam_tetro(active)
-  end
-
-  if btnp(2) then
-    rotate_tetro(active)
-  end
-
+  player:update()
 
   if frame_step==0 then
-    move_down(active)
+    move_down(player.active_tetro)
   end
 
   ghost:update()
@@ -284,9 +321,9 @@ end
 function move_down(tet_obj)
   local new_y=tet_obj.y+1
   if collide(tet_obj:current_shape(),tet_obj.x,new_y) then
-    if tet_obj:color() ~= ghost_color then
-      grid:add(tet_obj:current_shape(),tet_obj:color(),tet_obj.x,tet_obj.y)
-      add_tetro()
+    if tet_obj.color ~= ghost_color then
+      grid:add(tet_obj:current_shape(),tet_obj.color,tet_obj.x,tet_obj.y)
+      player:new_tetro()
     end
     return false
   else
@@ -295,72 +332,6 @@ function move_down(tet_obj)
   end
 end
 
-  end
-
-  end
-end
-
---generate a new tetro object(but lua doesn't really have those)
-function make_tetro()
-  local new_index = ceil(rnd(#tetros))
-  local new_tetro={
-    tetro=tetros[new_index],
-    x=4,
-    y=1,
-    rotation=1
-  }
-  new_tetro.current_shape=function(self)
-    return self.tetro.shapes[self.rotation]
-  end
-
-  new_tetro.color =function(self)
-    return self.tetro.color
-  end
-
-  return new_tetro
-end
-
-
---replace active tetro with next_tetro, generate a new next_tetro
-function add_tetro()
-  if not active then
-    next_tetro=make_tetro()
-    active=make_tetro()
-  else
-    active=next_tetro
-    next_tetro=make_tetro()
-  end
-
-  if collide(active:current_shape(), active.x, active.y) then
-    game_over=true
-  end
-  tetro_ct+=1
-end
-
---rotate a tetro to to its next shape (90 degrees clockwise)
-function rotate_tetro(tet_obj)
-  local new_rotation=tet_obj.rotation
-  if new_rotation>=#tet_obj.tetro.shapes then
-    new_rotation=1
-  else
-    new_rotation+=1
-  end
-
-  local new_shape=tet_obj.tetro.shapes[new_rotation]
-
-  if collide(new_shape,tet_obj.x,tet_obj.y) then
-    if not collide(new_shape,tet_obj.x-1,tet_obj.y) then
-      tet_obj.x-=1
-    elseif not collide(new_shape,tet_obj.x-2,tet_obj.y) then
-      tet_obj.x-=2
-    elseif not collide(new_shape,tet_obj.x+1,tet_obj.y) then
-      tet_obj.x+=1
-    else
-      return
-    end
-  end
-  tet_obj.rotation=new_rotation
-end
 
 function _draw()
   -- clear the screen every frame, unless it's game over
@@ -369,6 +340,7 @@ function _draw()
   end
 
   grid:draw()
+  player:draw()
 
   print("lines: "..lines_cleared, 76, 6, 7)
   print("level: "..curr_level, 76, 14, 7)
@@ -382,12 +354,70 @@ function _draw()
   end
 end
 
--- tetro definitions 
+-- tetro object
+--------------------------------
+-- define a class-like object prototype for our tetros
+tetro={
+  -- initial grid position for a newly spawned tetro is 4,1
+  x=4,
+  y=1,
+  name="",
+  color=0,
+  shapes={},
+  rotation=1
+}
+
+function tetro:current_shape()
+  return self.shapes[self.rotation]
+end
+
+function tetro:new(o)
+  self.__index=self
+  return setmetatable(o or {}, self)
+end
+
+--rotate a tetro to to its next shape (90 degrees clockwise)
+function tetro:rotate()
+  local new_rotation=self.rotation
+  if new_rotation>=#self.shapes then
+    new_rotation=1
+  else
+    new_rotation+=1
+  end
+
+  local new_shape=self.shapes[new_rotation]
+
+  -- check if the new rotation collides with the grid
+  -- nudge left/right if possible, otherwise don't rotate at all
+  if collide(new_shape,self.x,self.y) then
+    if not collide(new_shape,self.x-1,self.y) then
+      self.x-=1
+    elseif not collide(new_shape,self.x-2,self.y) then
+      self.x-=2
+    elseif not collide(new_shape,self.x+1,self.y) then
+      self.x+=1
+    else
+      return
+    end
+  end
+  self.rotation=new_rotation
+end
+
+-- tetro definitions
 --------------------------------
 
-tetros={}
+-- return a copy of a random tetro
+function random_tetro()
+  local t={}
+  local random_index=ceil(rnd(#tetro_library))
+  setmetatable(t,{
+    __index=tetro_library[random_index]
+  })
+  return t
+end
 
-tetros[1]={
+tetro_library={}
+tetro_library[1]=tetro:new({
   name="stick",
   color=2,
   shapes={
@@ -404,9 +434,9 @@ tetros[1]={
       {0,0,0,0}
     }
   }
-}
+})
 
-tetros[2]={
+tetro_library[2]=tetro:new({
   name="square",
   color=3,
   shapes={
@@ -417,9 +447,9 @@ tetros[2]={
       {0,0,0,0}
     }
   }
-}
+})
 
-tetros[3]={
+tetro_library[3]=tetro:new({
   name="t",
   color=4,
   shapes={
@@ -448,9 +478,9 @@ tetros[3]={
       {0,0,0,0}
     }
   }
-}
+})
 
-tetros[4]={
+tetro_library[4]=tetro:new({
   name="rightsnake",
   color=5,
   shapes={
@@ -467,9 +497,9 @@ tetros[4]={
       {0,0,0,0}
     }
   }
-}
+})
 
-tetros[5]={
+tetro_library[5]=tetro:new({
   name="leftsnake",
   color=6,
   shapes={
@@ -486,10 +516,10 @@ tetros[5]={
       {0,0,0,0}
     }
   }
-}
+})
 
 
-tetros[6]={
+tetro_library[6]=tetro:new({
   name="leftcane",
   color=7,
   shapes={
@@ -518,9 +548,9 @@ tetros[6]={
       {0,0,0,0}
     }
   }
-}
+})
 
-tetros[7]={
+tetro_library[7]=tetro:new({
   name="rightcane",
   color=8,
   shapes={
@@ -549,7 +579,8 @@ tetros[7]={
       {0,0,0,0}
     }
   }
-}
+})
+
 __gfx__
 00000000000001050501aaaa91bbbb31eeee21888821999941cccc51777761000000000000000000000000000000000000000000000000000000000000000000
 00000000000001505051aaaa91bbbb31eeee21888821999941cccc51777761000000000000000000000000000000000000000000000000000000000000000000
