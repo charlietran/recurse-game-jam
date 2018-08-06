@@ -128,11 +128,11 @@ end
 -- which becomes an empty row
 function grid:delete_line(line)
   for row=line,2,-1 do
-    for col=1, selfw do
+    for col=1, gridw do
       self.matrix[row][col] = self.matrix[row-1][col]
     end
   end
-  for i=1,selfw do
+  for i=1,gridw do
     self.matrix[1][i]=0
   end
   lines_cleared += 1
