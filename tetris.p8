@@ -2,25 +2,34 @@ pico-8 cartridge // http://www.pico-8.com
 version 16
 __lua__
 
---grid width
+-- constants
+----------------------------------------
+-- lua doesn't have constants, so these are
+-- just globals that should not be modified
+
+-- grid width and height
 gridw=10
---grid height
 gridh=20
---blocksize
+
+-- grid block size in pixels
 bsz=6
---how many frames have been rendered in the current step
---when this reaches 0 at the end of each step, tetro moves down
-frame_step=0
+
 --how many lines to clear to reach next level
 lines_per_level=8
---level 1 step time
+
+-- level 1 step time (used with frame_step)
 base_step_time=60
---how much to decrease step_time by each level
+
+-- how much to decrease step_time by each level (used with frame_step)
 difficulty_rate=2/3
---sprite number of the ghost block
+
+-- sprite number of the ghost block
 ghost_color=1
 
 function _init()
+  -- how many frames have been rendered in the current step
+  -- when this reaches 0 at the end of each step, tetro moves down
+  frame_step=0
 
   --how many tetrominos have been generated
   tetro_ct=0
@@ -354,6 +363,7 @@ function rotate_tetro(tet_obj)
 end
 
 function _draw()
+  -- clear the screen every frame, unless it's game over
   if not game_over then
     cls()
   end
@@ -364,10 +374,9 @@ function _draw()
   print("level: "..curr_level, 76, 14, 7)
   print("next piece:",76,28,7)
 
-  local game_over_x=44
-  local game_over_y=54
-
   if game_over then
+    local game_over_x=44
+    local game_over_y=54
     rectfill(game_over_x-1,game_over_y,79,59,8)
     print("game over",game_over_x, game_over_y, 7)
   end
