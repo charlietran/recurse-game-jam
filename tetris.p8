@@ -26,6 +26,7 @@ difficulty_rate=2/3
 -- sprite number of the ghost block
 ghost_color=1
 
+
 function _init()
   -- how many frames have been rendered in the current step
   -- when this reaches 0 at the end of each step, tetro moves down
@@ -33,6 +34,11 @@ function _init()
 
   --how many tetrominos have been generated
   tetro_ct=0
+
+  -- animation timer for the line delete flash
+  line_delete_timer=0
+
+  pause=false
 
   --how long to wait before dropping tetro one block
   step_time=base_step_time
@@ -56,8 +62,10 @@ function _update60()
     return
   end
 
-  frame_step+=1
-  frame_step=frame_step%step_time
+  if not pause then
+    frame_step+=1
+    frame_step=frame_step%step_time
+  end
 
   grid:update()
   player:update()
@@ -71,8 +79,22 @@ function _draw()
   end
 
   grid:draw()
-  player:draw()
-  ghost:draw()
+  if line_delete_timer==0 then
+    player:draw()
+    ghost:draw()
+  end
+
+  if line_delete_timer>0 then
+    for line in all(lines_deleted) do
+      if line_delete_timer%3==0 then
+        rectfill(
+          bsz,line*bsz,
+          gridw*bsz+4,line*bsz+4, 
+          7
+        )
+      end
+    end
+  end
 
   print("lines: "..lines_cleared, 76, 6, 7)
   print("level: "..curr_level, 76, 14, 7)
@@ -133,6 +155,7 @@ function move_down(t)
     if not t.is_ghost then
       grid:add(t:current_shape(),t.color,t.x,t.y)
       player:new_tetro()
+      grid:check_lines()
     end
     return false
   else
@@ -180,7 +203,16 @@ function grid:draw()
 end
 
 function grid:update()
-  self:check_lines()
+  if pause then
+    if line_delete_timer==0 then
+      pause=false
+      for line in all(lines_deleted) do
+        self:delete_line(line)
+      end
+    elseif line_delete_timer>0 then
+      line_delete_timer-=1
+    end
+  end
 end
 
 -- draw a tetro onto the grid
@@ -199,6 +231,7 @@ end
 
 --check the grid for a filled lines and delete them
 function grid:check_lines()
+  lines_deleted={}
   for y=1,gridh do
     local block_count=0
     for x=1,gridw do
@@ -207,9 +240,16 @@ function grid:check_lines()
       end
     end
     if block_count==gridw then
-      self:delete_line(y)
+      self:start_delete_line(y)
     end
   end
+end
+
+lines_deleted={}
+function grid:start_delete_line(line)
+  pause=true
+  line_delete_timer=30
+  add(lines_deleted,line)
 end
 
 -- replace a line with the one above it repeatedly until the top,
@@ -259,6 +299,8 @@ function player:init()
 end
 
 function player:update()
+  if(pause) return
+
   if frame_step==0 then
     move_down(self.active_tetro)
   end
@@ -274,6 +316,7 @@ function player:draw()
 end
 
 function player:handle_input()
+  if(pause) return
   local active_shape=self.active_tetro:current_shape()
 
   --buttons--
