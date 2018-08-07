@@ -286,10 +286,9 @@ function player:handle_input()
   --4: z/circle
   --5: x/cross
 
-  local input_step=frame_step%4==0
-  local left_input=input_step and btn(0)
-  local right_input=input_step and btn(1)
-  local down_input=input_step and btn(3)
+  local left_input=btnp(0)
+  local right_input=btnp(1)
+  local down_input=frame_step%3==0 and btn(3)
 
   if left_input and not collide(active_shape,self.active_tetro.x-1,self.active_tetro.y) then
     self.active_tetro.x-=1
