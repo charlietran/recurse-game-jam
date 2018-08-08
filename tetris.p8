@@ -298,8 +298,22 @@ end
 player={}
 
 function player:init()
-  self.active_tetro=random_tetro()
-  self.next_tetro=random_tetro()
+  self:fill_bag()
+  self.active_tetro=pop_first(self.tetro_bag)
+  self.next_tetro=pop_first(self.tetro_bag)
+end
+
+--generate the next 7 tetros in random order
+function player:fill_bag()
+  self.tetro_bag={}
+  local tmp={}
+  for i=1,#tetro_library do
+    add(tmp, i)
+  end
+  tmp=shuffle(tmp)
+  for i=1,#tetro_library do
+    add(self.tetro_bag,make_tetro(tmp[i]))
+  end
 end
 
 function player:update()
@@ -320,7 +334,7 @@ function player:draw()
 end
 
 function player:handle_input()
-  if(pause) return
+  if(pause) then return end
   local active_shape=self.active_tetro:current_shape()
 
   --buttons--
@@ -371,7 +385,10 @@ end
 -- replace active tetro with next_tetro, generate a new next_tetro
 function player:new_tetro()
   self.active_tetro=self.next_tetro
-  self.next_tetro=random_tetro()
+  self.next_tetro=pop_first(self.tetro_bag)
+  if #self.tetro_bag==0 then
+    self:fill_bag()
+  end
 
   -- if the new tetro is already touching something, then game's over
   if collide(self.active_tetro:current_shape(), self.active_tetro.x, self.active_tetro.y) then
@@ -457,17 +474,56 @@ function tetro:rotate()
   self.rotation=new_rotation
 end
 
+-- helper functions
+----------------------------------
+
+--print a table (only works with flat/non-nested tables)
+function print_table(t)
+  printh('{')
+  for i=1,#t do
+    printh('  '..t[i]..',')
+  end
+  printh('}')
+end
+
+--return the first element from a table, remove it from table
+function pop_first(t)
+  local first=t[1]
+  del(t,t[1])
+  return first
+end
+
+--take a list table, return a new one with shuffled order
+function shuffle(t)
+  local ret={}
+  for i=1,#t do
+    local r=ceil(rnd(#t))
+    local ti=t[r]
+    add(ret, t[r])
+    del(t, t[r])
+  end
+  return ret
+end
+
+-- end helper functions
+----------------------------------
+
 -- tetro definitions
 --------------------------------
 
--- return a copy of a random tetro
-function random_tetro()
+-- return a copy of a tetro from an index of the tetro_library
+function make_tetro(index)
   local t={}
-  local random_index=ceil(rnd(#tetro_library))
   setmetatable(t,{
-    __index=tetro_library[random_index]
+    __index=tetro_library[index]
   })
   return t
+end
+
+-- return a copy of a random tetro
+function random_tetro()
+  local random_index=ceil(rnd(#tetro_library))
+  return make_tetro(random_index)
 end
 
 tetro_library={}
