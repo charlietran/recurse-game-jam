@@ -338,27 +338,32 @@ function player:draw()
   self:draw_next_tetro_preview()
 end
 
+btn_init_repeat_delay=12
+btn_repeat_interval=3
+
 --take button code, and update counter based on btn(code)
 function player:poll_btn(btn_i)
-  --after the initial keypress, wait $init_wait frames before moving again
-  local init_wait=12
-  --when holding key down, move every $hold_wait frames
-  local hold_wait=3
+  --1st fire on initial keypress
+  --2nd fire after $btn_init_repeat_delay frames
+  --nth fires every $btn_repeat_interval frames afterward
+
   if btn(btn_i) then
     --button was not activated the previous frame
     if self.btn_ctrs[btn_i]==0 then
-      self.btn_ctrs[btn_i]=init_wait
-    --button has counted down all the way, move tetro and reset
+      self.btn_ctrs[btn_i]=btn_init_repeat_delay
+      return true
     elseif self.btn_ctrs[btn_i]==1 then
-      self.btn_ctrs[btn_i]=hold_wait
+      self.btn_ctrs[btn_i]=btn_repeat_interval
+      return false
     else
       self.btn_ctrs[btn_i]-=1
+      return self.btn_ctrs[btn_i]==1
     end
   else
     --button released, so set timer to 0
     self.btn_ctrs[btn_i]=0
+    return false
   end
-  return self.btn_ctrs[btn_i]==1 or btnp(btn_i)
 end
 
 function player:handle_input()
