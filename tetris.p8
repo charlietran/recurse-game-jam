@@ -298,6 +298,11 @@ end
 player={}
 
 function player:init()
+  --{left button (0), right button(1)} time counters
+  --value=0 means not pressed, gets set to >1,
+  --counts down to 1, then tetro is moved left/right
+  self.btn_ctrs={0,0}
+
   self:fill_bag()
   self.active_tetro=pop_first(self.tetro_bag)
   self.next_tetro=pop_first(self.tetro_bag)
@@ -333,6 +338,29 @@ function player:draw()
   self:draw_next_tetro_preview()
 end
 
+--take button code, and update counter based on btn(code)
+function player:poll_btn(btn_i)
+  --after the initial keypress, wait $init_wait frames before moving again
+  local init_wait=12
+  --when holding key down, move every $hold_wait frames
+  local hold_wait=3
+  if btn(btn_i) then
+    --button was not activated the previous frame
+    if self.btn_ctrs[btn_i]==0 then
+      self.btn_ctrs[btn_i]=init_wait
+    --button has counted down all the way, move tetro and reset
+    elseif self.btn_ctrs[btn_i]==1 then
+      self.btn_ctrs[btn_i]=hold_wait
+    else
+      self.btn_ctrs[btn_i]-=1
+    end
+  else
+    --button released, so set timer to 0
+    self.btn_ctrs[btn_i]=0
+  end
+  return self.btn_ctrs[btn_i]==1 or btnp(btn_i)
+end
+
 function player:handle_input()
   if(pause) then return end
   local active_shape=self.active_tetro:current_shape()
@@ -347,8 +375,8 @@ function player:handle_input()
   --4: z/circle
   --5: x/cross
 
-  local left_input=btnp(0)
-  local right_input=btnp(1)
+  local left_input=self:poll_btn(0)
+  local right_input=self:poll_btn(1)
   local down_input=frame_step%3==0 and btn(3)
 
   if left_input and not collide(active_shape,self.active_tetro.x-1,self.active_tetro.y) then
