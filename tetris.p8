@@ -110,6 +110,7 @@ function _draw()
   print("lines: "..lines_cleared, 76, 6, 7)
   print("level: "..curr_level, 76, 14, 7)
   print("next piece:",76,28,7)
+  print("hold piece:",76,68,7)
 
   if game_over then
     local game_over_x=44
@@ -167,6 +168,7 @@ function move_down(t)
       grid:add(t:current_shape(),t.color,t.x,t.y)
       player:new_tetro()
       grid:check_lines()
+      player.swapped_hold=false
     end
     return false
   else
@@ -314,6 +316,9 @@ function player:init()
   self:fill_bag()
   self.active_tetro=pop_first(self.tetro_bag)
   self.next_tetro=pop_first(self.tetro_bag)
+  self.hold_tetro=nil
+  --has the player already swapped the hold piece this turn
+  self.swapped_hold=false
 end
 
 --generate the next 7 tetros in random order
@@ -343,7 +348,10 @@ function player:draw()
   local at=self.active_tetro
   grid:draw_shape(at:current_shape(),at.color,at.x,at.y)
 
-  self:draw_next_tetro_preview()
+  self:display_inactive_tetro(self.next_tetro,80,33)
+  if self.hold_tetro!=nil then
+    self:display_inactive_tetro(self.hold_tetro,80,72)
+  end
 end
 
 btn_init_repeat_delay=12
@@ -374,6 +382,36 @@ function player:poll_btn(btn_i)
   end
 end
 
+function player:swap_hold_tetro()
+  if self.hold_tetro==nil then
+    self.hold_tetro=self.active_tetro
+    self:new_tetro()
+  else
+    if not self.swapped_hold then
+      local hold_shape = self.hold_tetro:current_shape()
+      local active_x = self.active_tetro.x
+      local active_y = self.active_tetro.y
+      if collide(hold_shape,active_x,active_y) then
+        if not collide(hold_shape,active_x-1,active_y) then
+          active_x-=1
+        elseif not collide(hold_shape,active_x-2,active_y) then
+          active_x-=2
+        elseif not collide(hold_shape,active_x+1,active_y) then
+          active_x+=1
+        else
+          return
+        end
+      end
+      self.hold_tetro,self.active_tetro=self.active_tetro,self.hold_tetro
+      self.active_tetro.x = active_x
+      self.active_tetro.y = active_y
+      self.hold_tetro.rotation=1
+      self.swapped_hold=true
+    end
+  end
+
+end
+
 function player:handle_input()
   if(pause) then return end
   local active_shape=self.active_tetro:current_shape()
@@ -398,6 +436,8 @@ function player:handle_input()
     self.active_tetro.x+=1
   elseif down_input then
     move_down(self.active_tetro)
+  elseif btnp(4) then
+    self:swap_hold_tetro()
   elseif btnp(5) then
     slam_tetro(self.active_tetro)
     sfx(1,3) -- play sfx 1 on channel 4
@@ -408,16 +448,15 @@ function player:handle_input()
   end
 end
 
-function player:draw_next_tetro_preview()
-  local next_x=80
-  local next_y=34
+--for showing the next/hold pieces off to the side
+function player:display_inactive_tetro(tetro,x,y)
   local grid_x,grid_y
-  for row_num,row in pairs(self.next_tetro.shapes[1]) do
+  for row_num,row in pairs(tetro:current_shape()) do
     for col_num,value in pairs(row) do
       if value==1 then
-        grid_x = col_num*bsz+next_x
-        grid_y = row_num*bsz+next_y
-        draw_block(self.next_tetro.color,grid_x,grid_y)
+        grid_x = col_num*bsz+x
+        grid_y = row_num*bsz+y
+        draw_block(tetro.color,grid_x,grid_y)
       end
     end
   end
@@ -681,12 +720,6 @@ tetro_library[3]=tetro:new({
   shapes={
     {
       {0,1,0,0},
-      {1,1,1,0},
-      {0,0,0,0},
-      {0,0,0,0}
-    },
-    {
-      {0,1,0,0},
       {0,1,1,0},
       {0,1,0,0},
       {0,0,0,0}
@@ -701,6 +734,12 @@ tetro_library[3]=tetro:new({
       {0,1,0,0},
       {1,1,0,0},
       {0,1,0,0},
+      {0,0,0,0}
+    },
+    {
+      {0,1,0,0},
+      {1,1,1,0},
+      {0,0,0,0},
       {0,0,0,0}
     }
   }
@@ -711,15 +750,15 @@ tetro_library[4]=tetro:new({
   color=5,
   shapes={
     {
-      {0,1,1,0},
-      {1,1,0,0},
-      {0,0,0,0},
-      {0,0,0,0}
-    },
-    {
       {1,0,0,0},
       {1,1,0,0},
       {0,1,0,0},
+      {0,0,0,0}
+    },
+    {
+      {0,1,1,0},
+      {1,1,0,0},
+      {0,0,0,0},
       {0,0,0,0}
     }
   }
@@ -730,15 +769,15 @@ tetro_library[5]=tetro:new({
   color=6,
   shapes={
     {
-      {1,1,0,0},
-      {0,1,1,0},
-      {0,0,0,0},
-      {0,0,0,0}
-    },
-    {
       {0,1,0,0},
       {1,1,0,0},
       {1,0,0,0},
+      {0,0,0,0}
+    },
+    {
+      {1,1,0,0},
+      {0,1,1,0},
+      {0,0,0,0},
       {0,0,0,0}
     }
   }
