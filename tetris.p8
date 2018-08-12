@@ -109,8 +109,8 @@ function _draw()
 
   print("lines: "..lines_cleared, 76, 6, 7)
   print("level: "..curr_level, 76, 14, 7)
-  print("next piece:",76,28,7)
-  print("hold piece:",76,68,7)
+  print("next:",76,28,7)
+  print("hold:",100,28,7)
 
   if game_over then
     local game_over_x=44
@@ -348,9 +348,9 @@ function player:draw()
   local at=self.active_tetro
   grid:draw_shape(at:current_shape(),at.color,at.x,at.y)
 
-  self:display_inactive_tetro(self.next_tetro,80,33)
+  self:display_inactive_tetro(self.next_tetro,72,33)
   if self.hold_tetro!=nil then
-    self:display_inactive_tetro(self.hold_tetro,80,72)
+    self:display_inactive_tetro(self.hold_tetro,96,33)
   end
 end
 
@@ -451,6 +451,23 @@ end
 --for showing the next/hold pieces off to the side
 function player:display_inactive_tetro(tetro,x,y)
   local grid_x,grid_y
+  --check if the entire leftmost column are 0s
+  local zero_left_col=true
+  for row_num, row in pairs(tetro:current_shape()) do
+    if row[1]!=0 then
+      zero_left_col=false
+    end
+  end
+  --move columns to the left if so (to fit in a smaller area)
+  if zero_left_col then
+    for row_num, row in pairs(tetro:current_shape()) do
+      for col_num=1,#row do
+        row[col_num]=row[col_num+1]
+      end
+      row[#row]=0
+    end
+  end
+  --then draw the blocks with the correct offset
   for row_num,row in pairs(tetro:current_shape()) do
     for col_num,value in pairs(row) do
       if value==1 then
