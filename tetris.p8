@@ -1,11 +1,23 @@
 pico-8 cartridge // http://www.pico-8.com
 version 16
 __lua__
+--------------------------------
+-- tetro-8
+-- a tetris clone in pico-8
+-- by charlie tran 
+-- and nicolas hahn
+-- created at the recurse center
+-- www.recurse.com
+--------------------------------
+-- view the source online:
+-- github.com/charlietran/tetro8
+--------------------------------
 
 -- constants
-----------------------------------------
--- lua doesn't have constants, so these are
--- just globals that should not be modified
+--------------------------------
+-- lua doesn't have constants, 
+-- so these are just globals 
+-- that should not be modified
 
 -- grid width and height
 gridw=10
@@ -14,40 +26,50 @@ gridh=20
 -- grid block size in pixels
 bsz=6
 
---how many lines to clear to reach next level
+-- how many lines to clear to 
+-- reach next level
 lines_per_level=8
 
--- level 1 step time (used with frame_step)
+-- level 1 step time 
+-- (used with frame_step)
 base_step_time=60
 
--- how much to decrease step_time by each level (used with frame_step)
+-- how much to decrease 
+-- step_time by each level 
+-- (used with frame_step)
 difficulty_rate=2/3
 
--- sprite number of the ghost block
+-- sprite number of ghost block
 ghost_color=1
 
 
 function _init()
-  -- how many frames have been rendered in the current step
-  -- when this reaches 0 at the end of each step, tetro moves down
+  -- how many frames have been 
+  -- rendered in current step
+  -- when this reaches 0 at the
+  -- end of each step, tetro 
+  -- moves down
   frame_step=0
 
-  --how many tetrominos have been generated
+  -- how many tetrominos have 
+  -- been generated
   tetro_ct=0
 
-  -- animation timer for the line delete flash
+  -- animation timer for the 
+  -- line delete flash effect
   line_delete_timer=0
 
   pause=false
 
-  --how long to wait before dropping tetro one block
+  -- how long to wait before 
+  -- dropping tetro one block
   step_time=base_step_time
   curr_level=1
 
   lines_cleared=0
   game_over=false
 
-  --start in intro mode
+  -- start in intro game mode
   mode="intro"
 
   intro:init()
@@ -58,7 +80,9 @@ end
 function _update60()
   if mode=="intro" then
     intro:update()
-    if mode=="intro" then return end
+    if mode=="intro" then 
+      return 
+    end
   end
 
   if game_over then
@@ -84,7 +108,8 @@ function _draw()
     return
   end
 
-  -- clear the screen every frame, unless it's game over
+  -- clear the screen every 
+  -- frame, unless game over
   if not game_over then
     cls()
   end
@@ -120,13 +145,16 @@ function _draw()
   end
 end
 
---draw a block to an absolute position on screen
+-- draw a block to an absolute 
+-- position on screen
 function draw_block(color, x, y)
   local sprite_position=8+(color*bsz)
   sspr(sprite_position, 0, bsz, bsz, x, y)
 end
 
---returns true if shape is overlapping with existing block/out of bounds
+-- returns true if shape will
+-- collide with a block, or
+-- will be out of bounds
 function collide(shape, new_x, new_y)
   for local_y,row in pairs(shape) do
     for local_x,value in pairs(row) do
@@ -150,28 +178,32 @@ function collide(shape, new_x, new_y)
   return false
 end
 
---drop tetro as far as it will go
+-- drop tetro as far as possible
 function slam_tetro(t)
   while move_down(t) do
   end
 end
 
--- tries to move a tetro down one block
--- if it collides with something in the grid, adds the current
--- shape to the grid and player gets a new tetro
--- otherwise, moves the tetro down by incrementing tetro's y value
+-- tries to move a tetro down 
+-- one block. if it collides, 
+-- adds the shape to the grid 
+-- and player gets a new tetro
 function move_down(t)
   local new_y=t.y+1
-  if collide(t:current_shape(),t.x,new_y) then
-    -- don't modify the grid if testing a ghost ttro
+  local s=t:current_shape()
+  if collide(s,t.x,new_y) then
+    -- don't modify the grid if 
+    -- this is the ghost tetro
     if not t.is_ghost then
-      grid:add(t:current_shape(),t.color,t.x,t.y)
+      grid:add(s,t.color,t.x,t.y)
       player:new_tetro()
       grid:check_lines()
       player.swapped_hold=false
     end
     return false
   else
+    -- if no collision, then 
+    -- move the piece down
     t.y = new_y
     return true
   end
@@ -180,18 +212,23 @@ end
 -- grid object and functions
 ----------------------------------
 
--- the grid object holds the current state of the tetris game grid.
+-- the grid object holds the 
+-- current state of game grid
 -- grid value meanings
 -- 0: empty block
 -- 1: ghost block
--- 2-8: filled block, number denotes color
+-- 2-8: filled block
+--      (number denotes color)
 
 grid={}
 function grid:init()
-  -- the 2d array for the data representation of the tetris grid
+  -- the 2d array for the data 
+  -- representation of the grid
   self.matrix={}
 
-  -- init the matrix as {grid.h} rows of {grid.w} length arrays of value 0
+  -- init the matrix as {grid.h} 
+  -- rows of {grid.w} length 
+  -- arrays of value 0
   for y=1,gridh do
     self.matrix[y]={}
     for x=1,gridw do
@@ -201,15 +238,20 @@ function grid:init()
 end
 
 function grid:draw()
-  -- the value of each grid cell is an x-offset multiple for the sprite sheet
-  -- the sprite sheet contains all possible tetris blocks at coordinates (8,0)
-  -- each block sprite is 6px by 6px (defined in bsz constant)
-  -- so a cell value of 0 will draw the sprite at (8,0), 1 will draw (14,0), etc
+  -- the value of each grid cell 
+  -- is a factor for an x-coord
+  -- in the sprite sheet, which
+  -- contains the color blocks 
+  -- starting at (8,0)
+  -- each block sprite is 6x6
+  -- so a cell value of 0 will 
+  -- draw the sprite at (8,0)
+  -- 1 will draw (14,0), etc
 
   for y,row in pairs(self.matrix) do
     for x,cell in pairs(row) do
       if cell then
-        sspr(8+cell*bsz, 0, bsz, bsz, x*bsz, y*bsz)
+        sspr(8+cell*bsz,0,bsz,bsz,x*bsz,y*bsz)
       end
     end
   end
@@ -242,7 +284,8 @@ function grid:draw_shape(shape,color,x,y)
   end
 end
 
---check the grid for a filled lines and delete them
+-- check the grid for filled 
+-- lines and delete them
 function grid:check_lines()
   lines_deleted={}
   for y=1,gridh do
@@ -266,8 +309,9 @@ function grid:start_delete_line(line)
   add(lines_deleted,line)
 end
 
--- replace a line with the one above it repeatedly until the top,
--- which becomes an empty row
+-- replace a line with the one 
+-- above it repeatedly until the 
+-- top, which becomes empty
 function grid:delete_line(line)
   for row=line,2,-1 do
     for col=1, gridw do
@@ -285,7 +329,7 @@ function grid:delete_line(line)
   end
 end
 
---add the active tetro to the grid
+-- add active tetro to the grid
 function grid:add(shape,color,x,y)
   local grid_x,grid_y
   for local_y, row in pairs(shape) do
@@ -300,11 +344,11 @@ function grid:add(shape,color,x,y)
 end
 
 -- end grid functions
-----------------------------------
+--------------------------------
 
 
 -- the player object
-----------------------------------
+--------------------------------
 player={}
 
 function player:init()
@@ -357,14 +401,14 @@ end
 btn_init_repeat_delay=12
 btn_repeat_interval=3
 
---take button code, and update counter based on btn(code)
+-- take button code, and update counter based on btn(code)
 function player:poll_btn(btn_i)
-  --1st fire on initial keypress
-  --2nd fire after $btn_init_repeat_delay frames
-  --nth fires every $btn_repeat_interval frames afterward
+  -- 1st fire on initial keypress
+  -- 2nd fire after $btn_init_repeat_delay frames
+  -- nth fires every $btn_repeat_interval frames afterward
 
   if btn(btn_i) then
-    --button was not activated the previous frame
+    -- button was not activated the previous frame
     if self.btn_ctrs[btn_i]==0 then
       self.btn_ctrs[btn_i]=btn_init_repeat_delay
       return true
@@ -376,7 +420,7 @@ function player:poll_btn(btn_i)
       return self.btn_ctrs[btn_i]==1
     end
   else
-    --button released, so set timer to 0
+    -- button released, so set timer to 0
     self.btn_ctrs[btn_i]=0
     return false
   end
@@ -500,7 +544,7 @@ function player:new_tetro()
 end
 
 -- end player functions
-----------------------------------
+--------------------------------
 
 -- the ghost tetro, which shows the player a preview at the bottom of the grid 
 -- of where their tetro will go when it drops 
@@ -547,7 +591,7 @@ function tetro:new(o)
   return setmetatable(o or {}, self)
 end
 
---rotate a tetro to to its next shape (90 degrees clockwise)
+-- rotate a tetro to next shape
 function tetro:rotate()
   local new_rotation=self.rotation
   if new_rotation>=#self.shapes then
@@ -558,8 +602,10 @@ function tetro:rotate()
 
   local new_shape=self.shapes[new_rotation]
 
-  -- check if the new rotation collides with the grid
-  -- nudge left/right if possible, otherwise don't rotate at all
+  -- check if the new rotation 
+  -- collides with the grid
+  -- nudge left/right if needed, 
+  -- or don't rotate at all
   if collide(new_shape,self.x,self.y) then
     if not collide(new_shape,self.x-1,self.y) then
       self.x-=1
@@ -575,7 +621,7 @@ function tetro:rotate()
 end
 
 -- helper functions
-----------------------------------
+--------------------------------
 
 --print a table (only works with flat/non-nested tables)
 function print_table(t)
@@ -606,16 +652,15 @@ function shuffle(t)
 end
 
 -- end helper functions
-----------------------------------
+--------------------------------
 
 -- intro 
 --------------------------------
 intro={}
 
-
 function intro:init()
   --play the intro track
-  music(9)  -- reserving channels 1, 2, 3 (1+2+4)
+  music(9)
   self.blink_timer=0
 
   -- init the stars array
@@ -624,7 +669,7 @@ function intro:init()
   self.blue_speed=.25
   self.white_speed=.4
 
-  -- init our star arrays with random positions
+  -- init our star arrays
   for i=1,128 do
     add(self.blue_stars,{
       x=flr(rnd(128)),
@@ -674,9 +719,16 @@ function intro:draw()
     pset(star.x,star.y,5)
   end
   map(0,0)
+  
+  --rect(76,79,126,103,5)
+  print(" created by",78,81,6)
+  print("charlie tran",78,89,6)
+  print("nicolas hahn",78,97,6)
+  
   if self.blink_timer>30 then
-    rectfill(31,109,95,115,8)
-    print("press z to start", 32, 110, 7)
+    rectfill(10,84,43,100,8)
+    print("press z",13,86,7)
+    print("to start",11,94,7)
   end
 end
 
@@ -900,12 +952,12 @@ __map__
 0023002626000022002525252400240000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 0023002600000022002525002424240000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 0000002626260000002500250000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-0000000000002727270000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-0000000000002700270000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-0000000000002727270000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-0000000000002700270000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-0000000000002727270000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+0000000000002727270000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+0000000000002700270000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+0000000000002727270000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+0000000000002700270000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+0000000000002727270000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 2020202020202020202020202020202000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 __sfx__
