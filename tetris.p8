@@ -140,7 +140,7 @@ function _draw()
   if game_over then
     local game_over_x=44
     local game_over_y=54
-    rectfill(game_over_x-1,game_over_y,79,59,8)
+    rectfill(game_over_x-1,game_over_y-1,79,59,8)
     print("game over",game_over_x, game_over_y, 7)
   end
 end
