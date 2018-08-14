@@ -74,7 +74,29 @@ function _init()
   game_over=false
 
   -- start in intro game mode
-  mode="intro"
+
+  intro_mode={
+    intro=true
+  }
+
+  outro_mode={
+    outro=true
+  }
+
+  survival_mode={
+    survival=true,
+    score=true,
+    levels=true,
+    diff_ramp=true
+  }
+   
+  race_mode={
+    race=true,
+    timer=true,
+    line_limit=40
+  }
+
+  mode=intro_mode
 
   intro:init()
   grid:init()
@@ -82,9 +104,9 @@ function _init()
 end
 
 function _update60()
-  if mode=="intro" then
+  if mode.intro then
     intro:update()
-    if mode=="intro" then 
+    if mode.intro then 
       return 
     end
   end
@@ -107,7 +129,7 @@ function _update60()
 end
 
 function _draw()
-  if mode=="intro" then
+  if mode.intro then
     intro:draw()
     return
   end
@@ -137,8 +159,15 @@ function _draw()
   end
 
   print("lines:\n"..lines_cleared, 2, 6, 7)
-  print("level:\n"..curr_level, 2, 22, 7)
-  print("score:\n"..curr_score, 100, 6, 7)
+
+  if mode.diff_ramp then
+    print("level:\n"..curr_level, 2, 22, 7)
+  end
+
+  if mode.score then
+    print("score:\n"..curr_score, 100, 6, 7)
+  end
+
   print("next:",100,50,7)
   print("hold:",2,50,7)
 
@@ -681,7 +710,6 @@ intro={}
 function intro:init()
   --play the intro track
   music(9)
-  self.blink_timer=0
 
   -- init the stars array
   self.blue_stars={}
@@ -702,14 +730,17 @@ function intro:init()
       y=flr(rnd(128))
     })
   end
+
+  self.menu={
+    list={
+      {text="survival",x=7,y=86,mode=survival_mode},
+      {text="race to 40",x=7,y=94,mode=race_mode}
+    },
+    index=1
+  }
 end
 
 function intro:update()
-  self.blink_timer+=1
-  if self.blink_timer>60 then
-    self.blink_timer=0
-  end
-
   for star in all(self.blue_stars) do
     star.y+=self.blue_speed
     star.y=star.y%127
@@ -720,13 +751,23 @@ function intro:update()
   end
   -- press z to start game and main music
   if btnp(4) then
-    mode="game"
+    mode=self.menu.list[self.menu.index].mode
     --play the tetris theme
     music(
       10, -- pattern 10
       50, -- 50ms fadein
       7)  -- reserving channels 1, 2, 3 (1+2+4)
   end
+
+
+  if btnp(3) or btnp(2) then
+    if self.menu.index==#self.menu.list then
+      self.menu.index=1
+    else
+      self.menu.index+=1
+    end
+  end
+
 end
 
 function intro:draw()
@@ -744,12 +785,21 @@ function intro:draw()
   print(" created by",78,81,6)
   print("charlie tran",78,89,6)
   print("nicolas hahn",78,97,6)
-  
-  if self.blink_timer>30 then
-    rectfill(10,84,43,100,8)
-    print("press z",13,86,7)
-    print("to start",11,94,7)
+
+ 
+  -- print("survival",7,86,7)
+  -- print("race to 40",7,94,7)
+
+  for i,item in pairs(intro.menu.list) do
+    if intro.menu.index==i then 
+      rectfill(
+      item.x-1, item.y-1,
+      item.x + 4*#item.text -1, item.y + 5,8
+      )
+    end
+    print(item.text, item.x, item.y, 7)
   end
+
 end
 
 -- end intro 
