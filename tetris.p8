@@ -23,6 +23,10 @@ __lua__
 gridw=10
 gridh=20
 
+-- upper left corner of grid
+grid_offset_x=27
+grid_offset_y=0
+
 -- grid block size in pixels
 bsz=6
 
@@ -65,7 +69,7 @@ function _init()
   -- dropping tetro one block
   step_time=base_step_time
   curr_level=1
-
+  curr_score=0
   lines_cleared=0
   game_over=false
 
@@ -124,18 +128,19 @@ function _draw()
     for line in all(lines_deleted) do
       if line_delete_timer%3==0 then
         rectfill(
-          bsz,line*bsz,
-          gridw*bsz+4,line*bsz+4, 
+          grid_offset_x+bsz,grid_offset_y+line*bsz,
+          grid_offset_x+gridw*bsz+4,grid_offset_y+line*bsz+4, 
           7
         )
       end
     end
   end
 
-  print("lines: "..lines_cleared, 76, 6, 7)
-  print("level: "..curr_level, 76, 14, 7)
-  print("next:",76,28,7)
-  print("hold:",100,28,7)
+  print("lines:\n"..lines_cleared, 2, 6, 7)
+  print("level:\n"..curr_level, 2, 22, 7)
+  print("score:\n"..curr_score, 100, 6, 7)
+  print("next:",100,50,7)
+  print("hold:",2,50,7)
 
   if game_over then
     local game_over_x=44
@@ -251,10 +256,12 @@ function grid:draw()
   for y,row in pairs(self.matrix) do
     for x,cell in pairs(row) do
       if cell then
-        sspr(8+cell*bsz,0,bsz,bsz,x*bsz,y*bsz)
+        sspr(8+cell*bsz,0,bsz,bsz,grid_offset_x+x*bsz,grid_offset_y+y*bsz)
       end
     end
   end
+  line(grid_offset_x+bsz-1,grid_offset_y+bsz,
+       grid_offset_x+bsz-1,grid_offset_y+20*bsz+bsz-1,1)
 end
 
 function grid:update()
@@ -276,8 +283,8 @@ function grid:draw_shape(shape,color,x,y)
   for row_num,row in pairs(shape) do
     for col_num,value in pairs(row) do
       if value==1 then
-        abs_x = (col_num-1+x)*bsz
-        abs_y = (row_num-1+y)*bsz
+        abs_x = (col_num-1+x)*bsz+grid_offset_x
+        abs_y = (row_num-1+y)*bsz+grid_offset_y
         draw_block(color,abs_x,abs_y)
       end
     end
@@ -298,6 +305,18 @@ function grid:check_lines()
     if block_count==gridw then
       self:start_delete_line(y)
       sfx(2,1) -- play sfx 2 on channel 2
+    end
+  end
+  if #lines_deleted>0 then
+    curr_score+=#lines_deleted
+    if #lines_deleted>=4 then
+      if player.last_line_tetris==true then
+        curr_score+=4
+      end
+      curr_score+=4
+      player.last_line_tetris=true
+    else
+      player.last_line_tetris=false
     end
   end
 end
@@ -363,6 +382,7 @@ function player:init()
   self.hold_tetro=nil
   --has the player already swapped the hold piece this turn
   self.swapped_hold=false
+  self.last_line_tetris=false
 end
 
 --generate the next 7 tetros in random order
@@ -392,9 +412,9 @@ function player:draw()
   local at=self.active_tetro
   grid:draw_shape(at:current_shape(),at.color,at.x,at.y)
 
-  self:display_inactive_tetro(self.next_tetro,72,33)
+  self:display_inactive_tetro(self.next_tetro,96,54)
   if self.hold_tetro!=nil then
-    self:display_inactive_tetro(self.hold_tetro,96,33)
+    self:display_inactive_tetro(self.hold_tetro,2,54)
   end
 end
 
