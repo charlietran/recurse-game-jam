@@ -34,6 +34,9 @@ bsz=6
 -- reach next level
 lines_per_level=8
 
+-- how many lines you need to clear to win race mode
+line_limit=40
+
 -- level 1 step time 
 -- (used with frame_step)
 base_step_time=60
@@ -70,6 +73,7 @@ function _init()
   step_time=base_step_time
   curr_level=1
   curr_score=0
+  curr_time=0
   lines_cleared=0
   game_over=false
 
@@ -93,7 +97,8 @@ function _init()
   race_mode={
     race=true,
     timer=true,
-    line_limit=40
+    line_limit=line_limit,
+    won=false
   }
 
   mode=intro_mode
@@ -111,7 +116,7 @@ function _update60()
     end
   end
 
-  if game_over then
+  if game_over or mode.won then
     if btnp(4) then
       _init()
     end
@@ -121,11 +126,18 @@ function _update60()
   if not pause then
     frame_step+=1
     frame_step=frame_step%step_time
+    curr_time+=1
   end
 
   grid:update()
   player:update()
   ghost:update()
+end
+
+function draw_text_box(text,x,y,text_color,bkg_color)
+  local width=#text*4
+  rectfill(x-1,y-1,x+width-1,y+5,bkg_color)
+  print(text,x,y,text_color)
 end
 
 function _draw()
@@ -136,7 +148,7 @@ function _draw()
 
   -- clear the screen every 
   -- frame, unless game over
-  if not game_over then
+  if not game_over or mode.won then
     cls()
   end
 
@@ -158,7 +170,13 @@ function _draw()
     end
   end
 
-  print("lines:\n"..lines_cleared, 2, 6, 7)
+  local line_count
+  if mode.line_limit then
+    line_count=lines_cleared.."/"..mode.line_limit
+  else
+    line_count=lines_cleared
+  end
+  print("lines:\n"..line_count, 2, 6, 7)
 
   if mode.diff_ramp then
     print("level:\n"..curr_level, 2, 22, 7)
@@ -166,16 +184,39 @@ function _draw()
 
   if mode.score then
     print("score:\n"..curr_score, 100, 6, 7)
+  elseif mode.timer then
+    print("time:\n"..display_time(curr_time), 100, 6, 7)
   end
 
   print("next:",100,50,7)
   print("hold:",2,50,7)
 
   if game_over then
-    local game_over_x=44
-    local game_over_y=54
-    rectfill(game_over_x-1,game_over_y-1,79,59,8)
-    print("game over",game_over_x, game_over_y, 7)
+    draw_text_box("game over",45,54,7,8)
+    --local game_over_x=44
+    --local game_over_y=54
+    --rectfill(game_over_x-1,game_over_y-1,79,59,8)
+    --print("game over",game_over_x, game_over_y, 7)
+  end
+
+  if mode.won and mode.race then
+    draw_text_box("cleared",49,54,7,3)
+    --local outro_x=44
+    --local outro_y=54
+    --rectfill(outro_x-1,outro_y-1,79,59,8)
+    --print("cleared",outro_x, outro_y, 3)
+  end
+
+end
+
+--convert a frame count to a `min:sec` timer
+function display_time(time)
+  local mins=flr(time/(60*60))
+  local secs=(time/60)%60
+  if secs>10 then
+    return (mins..":"..secs)
+  else
+    return (mins..":0"..secs)
   end
 end
 
@@ -371,9 +412,13 @@ function grid:delete_line(line)
   end
   lines_cleared += 1
 
-  if lines_cleared%lines_per_level == 0 then
+  if lines_cleared%lines_per_level == 0 and mode.survival then
     curr_level+=1
     step_time = ceil(base_step_time * (difficulty_rate^(curr_level-1)))
+  end
+
+  if mode.race and lines_cleared>=mode.line_limit then
+    mode.won=true
   end
 end
 
