@@ -19,6 +19,16 @@ __lua__
 -- so these are just globals 
 -- that should not be modified
 
+cart_name="tetro_8"
+cartdata(cart_name)
+
+--store top 5 survival scores on cart bytes 0-4
+--store top 5 race scores on cart bytes 5-9
+survival_score_start_i=0
+survival_score_end_i=4
+race_score_start_i=5
+race_score_end_i=9
+
 -- grid width and height
 gridw=10
 gridh=20
@@ -49,7 +59,6 @@ difficulty_rate=2/3
 -- sprite number of ghost block
 ghost_color=1
 
-
 function _init()
   -- how many frames have been 
   -- rendered in current step
@@ -75,7 +84,6 @@ function _init()
   curr_score=0
   curr_time=0
   lines_cleared=0
-  game_over=false
 
   -- start in intro game mode
 
@@ -89,16 +97,24 @@ function _init()
 
   survival_mode={
     survival=true,
+    play=true,
     score=true,
     levels=true,
-    diff_ramp=true
+    diff_ramp=true,
+    game_over=false
   }
    
   race_mode={
     race=true,
+    play=true,
     timer=true,
     line_limit=line_limit,
-    won=false
+    won=false,
+    game_over=false
+  }
+
+  scoreboard_mode={
+    scoreboard=true
   }
 
   mode=intro_mode
@@ -106,6 +122,7 @@ function _init()
   intro:init()
   grid:init()
   player:init()
+  scoreboard:init()
 end
 
 function _update60()
@@ -116,7 +133,14 @@ function _update60()
     end
   end
 
-  if game_over or mode.won then
+  if mode.scoreboard then
+    scoreboard:update()
+    if btnp(5) then
+      mode=intro_mode
+    end
+  end
+
+  if mode.game_over or mode.won then
     if btnp(4) then
       _init()
     end
@@ -129,9 +153,11 @@ function _update60()
     curr_time+=1
   end
 
-  grid:update()
-  player:update()
-  ghost:update()
+  if mode.play then
+    grid:update()
+    player:update()
+    ghost:update()
+  end
 end
 
 function draw_text_box(text,x,y,text_color,bkg_color)
@@ -146,9 +172,13 @@ function _draw()
     return
   end
 
+  if mode.scoreboard then
+    scoreboard:draw()
+    return
+  end
   -- clear the screen every 
   -- frame, unless game over
-  if not game_over or mode.won then
+  if not mode.game_over or mode.won then
     cls()
   end
 
@@ -191,20 +221,12 @@ function _draw()
   print("next:",100,50,7)
   print("hold:",2,50,7)
 
-  if game_over then
+  if mode.game_over then
     draw_text_box("game over",45,54,7,8)
-    --local game_over_x=44
-    --local game_over_y=54
-    --rectfill(game_over_x-1,game_over_y-1,79,59,8)
-    --print("game over",game_over_x, game_over_y, 7)
   end
 
   if mode.won and mode.race then
     draw_text_box("cleared",49,54,7,3)
-    --local outro_x=44
-    --local outro_y=54
-    --rectfill(outro_x-1,outro_y-1,79,59,8)
-    --print("cleared",outro_x, outro_y, 3)
   end
 
 end
@@ -236,7 +258,6 @@ function collide(shape, new_x, new_y)
       if value==1 then
         local abs_x = new_x+local_x-1
         local abs_y = new_y+local_y-1
-
         if (abs_x > gridw) or (abs_x < 1) then
           return true
         end
@@ -419,6 +440,7 @@ function grid:delete_line(line)
 
   if mode.race and lines_cleared>=mode.line_limit then
     mode.won=true
+    record_race_score(curr_time)
     sfx(6)
     music(-1,50)
   end
@@ -614,10 +636,31 @@ function player:display_inactive_tetro(tetro,x,y)
   for row_num,row in pairs(tetro:current_shape()) do
     for col_num,value in pairs(row) do
       if value==1 then
-        grid_x = col_num*bsz+x
-        grid_y = row_num*bsz+y
+        local grid_x = col_num*bsz+x
+        local grid_y = row_num*bsz+y
         draw_block(tetro.color,grid_x,grid_y)
       end
+    end
+  end
+end
+
+--add to scoreboard, pushing worse scores down in rank
+function record_survival_score(score)
+  for i=survival_score_start_i,survival_score_end_i do
+    local old_score=dget(i)
+    if score>old_score then
+      dset(i,score)
+      score=old_score
+    end
+  end
+end
+
+function record_race_score(score)
+  for i=race_score_start_i,race_score_end_i do
+    local old_score=dget(i)
+    if score<old_score or old_score==0 then
+      dset(i,score)
+      score=old_score
     end
   end
 end
@@ -632,7 +675,8 @@ function player:new_tetro()
 
   -- if the new tetro is already touching something, then game's over
   if collide(self.active_tetro:current_shape(), self.active_tetro.x, self.active_tetro.y) then
-    game_over=true
+    mode.game_over=true
+    record_survival_score(curr_score)
     sfx(0)
     music(-1,50)
   end
@@ -719,7 +763,7 @@ end
 -- helper functions
 --------------------------------
 
---print a table (only works with flat/non-nested tables)
+--print a table to stdout (only works with flat/non-nested tables)
 function print_table(t)
   printh('{')
   for i=1,#t do
@@ -780,8 +824,9 @@ function intro:init()
 
   self.menu={
     list={
-      {text="survival",x=14,y=86,mode=survival_mode},
-      {text="race to 40",x=11,y=94,mode=race_mode}
+      {text="survival",x=13,y=81,mode=survival_mode},
+      {text="race to 40",x=10,y=89,mode=race_mode},
+      {text="scoreboard",x=10,y=97,mode=scoreboard_mode}
     },
     index=1
   }
@@ -800,18 +845,26 @@ function intro:update()
   if btnp(4) then
     mode=self.menu.list[self.menu.index].mode
     --play the tetris theme
-    music(
-      10, -- pattern 10
-      50, -- 50ms fadein
-      7)  -- reserving channels 1, 2, 3 (1+2+4)
+    if mode.play then
+      music(
+        10, -- pattern 10
+        50, -- 50ms fadein
+        7)  -- reserving channels 1, 2, 3 (1+2+4)
+      end
   end
 
-
-  if btnp(3) or btnp(2) then
+  if btnp(3) then
     if self.menu.index==#self.menu.list then
       self.menu.index=1
     else
       self.menu.index+=1
+    end
+  end
+  if btnp(2) then
+    if self.menu.index==1 then
+      self.menu.index=#self.menu.list
+    else
+      self.menu.index-=1
     end
   end
 
@@ -851,6 +904,46 @@ function intro:draw()
 end
 
 -- end intro 
+--------------------------------
+
+-- scoreboard
+--------------------------------
+
+scoreboard={}
+function scoreboard:init()
+  self.survival_scores={}
+  self.race_scores={}
+end
+
+function scoreboard:update()
+  for i=survival_score_start_i,survival_score_end_i do
+    self.survival_scores[i+1]=dget(i)
+  end
+  for i=race_score_start_i,race_score_end_i do
+    self.race_scores[i-4]=dget(i)
+  end
+end
+
+function scoreboard:draw()
+  cls()
+  print("high scores",42,5,7)
+  print("survival",20,23,7)
+  print("race to 40",70,23,7)
+  print("❎ to return",70,118,7)
+  for i,score in pairs(self.survival_scores) do
+    local score_color=7
+    if (score==0) score_color=5
+    print(i..". "..score, 20, 30+i*10,score_color)
+  end
+  for i,score in pairs(self.race_scores) do
+    local score_color=7
+    if (score==0) score_color=5
+    local time=display_time(score)
+    print(i..". "..time, 70, 30+i*10,score_color)
+  end
+end
+
+-- end scoreboard
 --------------------------------
 
 -- tetro definitions
