@@ -23,11 +23,11 @@ cart_name="tetro_8"
 cartdata(cart_name)
 
 --store top 5 survival scores on cart bytes 0-4
---store top 5 race scores on cart bytes 5-9
+--store top 5 sprint scores on cart bytes 5-9
 survival_score_start_i=0
 survival_score_end_i=4
-race_score_start_i=5
-race_score_end_i=9
+sprint_score_start_i=5
+sprint_score_end_i=9
 
 -- grid width and height
 gridw=10
@@ -44,7 +44,7 @@ bsz=6
 -- reach next level
 lines_per_level=8
 
--- how many lines you need to clear to win race mode
+-- how many lines you need to clear to win sprint mode
 line_limit=40
 
 -- level 1 step time 
@@ -104,8 +104,8 @@ function _init()
     game_over=false
   }
    
-  race_mode={
-    race=true,
+  sprint_mode={
+    sprint=true,
     play=true,
     timer=true,
     line_limit=line_limit,
@@ -225,7 +225,7 @@ function _draw()
     draw_text_box("game over",45,54,7,8)
   end
 
-  if mode.won and mode.race then
+  if mode.won and mode.sprint then
     draw_text_box("cleared",49,54,7,3)
   end
 
@@ -438,9 +438,9 @@ function grid:delete_line(line)
     step_time = ceil(base_step_time * (difficulty_rate^(curr_level-1)))
   end
 
-  if mode.race and lines_cleared>=mode.line_limit then
+  if mode.sprint and lines_cleared>=mode.line_limit then
     mode.won=true
-    record_race_score(curr_time)
+    record_sprint_score(curr_time)
     sfx(6)
     music(-1,50)
   end
@@ -655,8 +655,8 @@ function record_survival_score(score)
   end
 end
 
-function record_race_score(score)
-  for i=race_score_start_i,race_score_end_i do
+function record_sprint_score(score)
+  for i=sprint_score_start_i,sprint_score_end_i do
     local old_score=dget(i)
     if score<old_score or old_score==0 then
       dset(i,score)
@@ -825,7 +825,7 @@ function intro:init()
   self.menu={
     list={
       {text="survival",x=13,y=81,mode=survival_mode},
-      {text="race to 40",x=10,y=89,mode=race_mode},
+      {text="sprint",x=17,y=89,mode=sprint_mode},
       {text="scoreboard",x=10,y=97,mode=scoreboard_mode}
     },
     index=1
@@ -889,7 +889,7 @@ function intro:draw()
 
  
   -- print("survival",7,86,7)
-  -- print("race to 40",7,94,7)
+  -- print("sprint to 40",7,94,7)
 
   for i,item in pairs(intro.menu.list) do
     if intro.menu.index==i then 
@@ -912,15 +912,15 @@ end
 scoreboard={}
 function scoreboard:init()
   self.survival_scores={}
-  self.race_scores={}
+  self.sprint_scores={}
 end
 
 function scoreboard:update()
   for i=survival_score_start_i,survival_score_end_i do
     self.survival_scores[i+1]=dget(i)
   end
-  for i=race_score_start_i,race_score_end_i do
-    self.race_scores[i-4]=dget(i)
+  for i=sprint_score_start_i,sprint_score_end_i do
+    self.sprint_scores[i-4]=dget(i)
   end
 end
 
@@ -928,14 +928,14 @@ function scoreboard:draw()
   cls()
   print("high scores",42,5,7)
   print("survival",20,23,7)
-  print("race to 40",70,23,7)
+  print("sprint",70,23,7)
   print("❎ to return",70,118,7)
   for i,score in pairs(self.survival_scores) do
     local score_color=7
     if (score==0) score_color=5
     print(i..". "..score, 20, 30+i*10,score_color)
   end
-  for i,score in pairs(self.race_scores) do
+  for i,score in pairs(self.sprint_scores) do
     local score_color=7
     if (score==0) score_color=5
     local time=display_time(score)
