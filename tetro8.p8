@@ -4,7 +4,7 @@ __lua__
 --------------------------------
 -- tetro-8
 -- a tetris clone in pico-8
--- by charlie tran 
+-- by charlie tran
 -- and nicolas hahn
 -- created at the recurse center
 -- www.recurse.com
@@ -15,8 +15,8 @@ __lua__
 
 -- constants
 --------------------------------
--- lua doesn't have constants, 
--- so these are just globals 
+-- lua doesn't have constants,
+-- so these are just globals
 -- that should not be modified
 
 cart_name="tetro_8"
@@ -40,19 +40,19 @@ grid_offset_y=0
 -- grid block size in pixels
 bsz=6
 
--- how many lines to clear to 
+-- how many lines to clear to
 -- reach next level
 lines_per_level=8
 
 -- how many lines you need to clear to win sprint mode
 line_limit=40
 
--- level 1 step time 
+-- level 1 step time
 -- (used with frame_step)
 base_step_time=60
 
--- how much to decrease 
--- step_time by each level 
+-- how much to decrease
+-- step_time by each level
 -- (used with frame_step)
 difficulty_rate=2/3
 
@@ -60,24 +60,24 @@ difficulty_rate=2/3
 ghost_color=1
 
 function _init()
-  -- how many frames have been 
+  -- how many frames have been
   -- rendered in current step
   -- when this reaches 0 at the
-  -- end of each step, tetro 
+  -- end of each step, tetro
   -- moves down
   frame_step=0
 
-  -- how many tetrominos have 
+  -- how many tetrominos have
   -- been generated
   tetro_ct=0
 
-  -- animation timer for the 
+  -- animation timer for the
   -- line delete flash effect
   line_delete_timer=0
 
   pause=false
 
-  -- how long to wait before 
+  -- how long to wait before
   -- dropping tetro one block
   step_time=base_step_time
   curr_level=1
@@ -103,7 +103,7 @@ function _init()
     diff_ramp=true,
     game_over=false
   }
-   
+
   sprint_mode={
     sprint=true,
     play=true,
@@ -128,8 +128,8 @@ end
 function _update60()
   if mode.intro then
     intro:update()
-    if mode.intro then 
-      return 
+    if mode.intro then
+      return
     end
   end
 
@@ -176,7 +176,7 @@ function _draw()
     scoreboard:draw()
     return
   end
-  -- clear the screen every 
+  -- clear the screen every
   -- frame, unless game over
   if not mode.game_over or mode.won then
     cls()
@@ -193,7 +193,7 @@ function _draw()
       if line_delete_timer%3==0 then
         rectfill(
           grid_offset_x+bsz,grid_offset_y+line*bsz,
-          grid_offset_x+gridw*bsz+4,grid_offset_y+line*bsz+4, 
+          grid_offset_x+gridw*bsz+4,grid_offset_y+line*bsz+4,
           7
         )
       end
@@ -242,7 +242,7 @@ function display_time(time)
   end
 end
 
--- draw a block to an absolute 
+-- draw a block to an absolute
 -- position on screen
 function draw_block(color, x, y)
   local sprite_position=8+(color*bsz)
@@ -270,7 +270,7 @@ function collide(shape, new_x, new_y)
       end
     end
   end
- 
+
   return false
 end
 
@@ -280,15 +280,15 @@ function slam_tetro(t)
   end
 end
 
--- tries to move a tetro down 
--- one block. if it collides, 
--- adds the shape to the grid 
+-- tries to move a tetro down
+-- one block. if it collides,
+-- adds the shape to the grid
 -- and player gets a new tetro
 function move_down(t)
   local new_y=t.y+1
   local s=t:current_shape()
   if collide(s,t.x,new_y) then
-    -- don't modify the grid if 
+    -- don't modify the grid if
     -- this is the ghost tetro
     if not t.is_ghost then
       grid:add(s,t.color,t.x,t.y)
@@ -298,7 +298,7 @@ function move_down(t)
     end
     return false
   else
-    -- if no collision, then 
+    -- if no collision, then
     -- move the piece down
     t.y = new_y
     return true
@@ -308,7 +308,7 @@ end
 -- grid object and functions
 ----------------------------------
 
--- the grid object holds the 
+-- the grid object holds the
 -- current state of game grid
 -- grid value meanings
 -- 0: empty block
@@ -318,12 +318,12 @@ end
 
 grid={}
 function grid:init()
-  -- the 2d array for the data 
+  -- the 2d array for the data
   -- representation of the grid
   self.matrix={}
 
-  -- init the matrix as {grid.h} 
-  -- rows of {grid.w} length 
+  -- init the matrix as {grid.h}
+  -- rows of {grid.w} length
   -- arrays of value 0
   for y=1,gridh do
     self.matrix[y]={}
@@ -334,13 +334,13 @@ function grid:init()
 end
 
 function grid:draw()
-  -- the value of each grid cell 
+  -- the value of each grid cell
   -- is a factor for an x-coord
   -- in the sprite sheet, which
-  -- contains the color blocks 
+  -- contains the color blocks
   -- starting at (8,0)
   -- each block sprite is 6x6
-  -- so a cell value of 0 will 
+  -- so a cell value of 0 will
   -- draw the sprite at (8,0)
   -- 1 will draw (14,0), etc
 
@@ -382,7 +382,7 @@ function grid:draw_shape(shape,color,x,y)
   end
 end
 
--- check the grid for filled 
+-- check the grid for filled
 -- lines and delete them
 function grid:check_lines()
   lines_deleted={}
@@ -419,8 +419,8 @@ function grid:start_delete_line(line)
   add(lines_deleted,line)
 end
 
--- replace a line with the one 
--- above it repeatedly until the 
+-- replace a line with the one
+-- above it repeatedly until the
 -- top, which becomes empty
 function grid:delete_line(line)
   for row=line,2,-1 do
@@ -601,14 +601,14 @@ function player:handle_input()
     self.active_tetro.x+=1
   elseif down_input then
     move_down(self.active_tetro)
-  elseif btnp(4) then
-    self:swap_hold_tetro()
   elseif btnp(5) then
+    self:swap_hold_tetro()
+  elseif btnp(2) then
     slam_tetro(self.active_tetro)
     sfx(1,3) -- play sfx 1 on channel 4
   end
 
-  if btnp(2) then
+  if btnp(4) then
     self.active_tetro:rotate()
   end
 end
@@ -686,8 +686,8 @@ end
 -- end player functions
 --------------------------------
 
--- the ghost tetro, which shows the player a preview at the bottom of the grid 
--- of where their tetro will go when it drops 
+-- the ghost tetro, which shows the player a preview at the bottom of the grid
+-- of where their tetro will go when it drops
 -- quacks like a tetro so that it can use slam_tetro() to be drawn
 -- as far down as possible
 
@@ -742,9 +742,9 @@ function tetro:rotate()
 
   local new_shape=self.shapes[new_rotation]
 
-  -- check if the new rotation 
+  -- check if the new rotation
   -- collides with the grid
-  -- nudge left/right if needed, 
+  -- nudge left/right if needed,
   -- or don't rotate at all
   if collide(new_shape,self.x,self.y) then
     if not collide(new_shape,self.x-1,self.y) then
@@ -794,7 +794,7 @@ end
 -- end helper functions
 --------------------------------
 
--- intro 
+-- intro
 --------------------------------
 intro={}
 
@@ -881,18 +881,18 @@ function intro:draw()
   end
   map(0,0)
   map(16,0, -4,16, 16,16)
-  
+
   --rect(76,79,126,103,5)
   print(" created by", 79,81,6)
   print("charlie tran",79,89,6)
   print("nicolas hahn",79,97,6)
 
- 
+
   -- print("survival",7,86,7)
   -- print("sprint to 40",7,94,7)
 
   for i,item in pairs(intro.menu.list) do
-    if intro.menu.index==i then 
+    if intro.menu.index==i then
       rectfill(
       item.x-1, item.y-1,
       item.x + 4*#item.text -1, item.y + 5,8
@@ -903,7 +903,7 @@ function intro:draw()
 
 end
 
--- end intro 
+-- end intro
 --------------------------------
 
 -- scoreboard
